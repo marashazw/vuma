@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes nav-nudge-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-paper text-navy-800 font-body antialiased;
+  }
+  h1, h2, h3, h4 {
+    @apply font-display;
+  }
+  :focus-visible {
+    outline: 2px solid theme("colors.gold.400");
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 font-display font-semibold text-sm transition-transform active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-gold-400 text-navy-900 hover:bg-gold-300 shadow-[0_4px_0_0_theme(colors.gold.600)];
+  }
+  .btn-dark {
+    @apply btn bg-navy-800 text-paper hover:bg-navy-700;
+  }
+  .btn-ghost {
+    @apply btn bg-transparent text-navy-700 hover:bg-navy-50 border border-navy-100;
+  }
+  .btn-danger {
+    @apply btn bg-coral-500 text-white hover:bg-coral-600;
+  }
+  .card {
+    @apply bg-white rounded-xl2 border border-navy-100 shadow-sm;
+  }
+  .input {
+    @apply w-full rounded-xl border border-navy-100 bg-white px-4 py-3 text-navy-800 placeholder:text-navy-300 focus:border-gold-400 focus:ring-2 focus:ring-gold-100 outline-none transition;
+  }
+  .label {
+    @apply text-xs font-semibold uppercase tracking-wide text-navy-400;
+  }
+  .fare-figure {
+    @apply font-mono tabular-nums;
+  }
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold;
+  }
+}
+
+/* Leaflet map container needs an explicit height + our accent for markers */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-inter), sans-serif;
+}
+.vuma-marker-pulse {
+  position: relative;
+}
+.vuma-marker-pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: theme("colors.jade.400");
+  animation: pulseRing 1.8s ease-out infinite;
+}
+
+/* Simple legal-page typography (privacy/terms) — no @tailwindcss/typography
+   plugin installed, so this covers the same ground manually. */
+.legal-content h2 {
+  @apply text-xl font-bold text-navy-800 mt-8 mb-3;
+}
+.legal-content h3 {
+  @apply text-base font-semibold text-navy-700 mt-5 mb-2;
+}
+.legal-content p {
+  @apply text-navy-600 leading-relaxed mb-4;
+}
+.legal-content ul {
+  @apply list-disc pl-6 mb-4 space-y-1.5 text-navy-600;
+}
+.legal-content a {
+  @apply text-gold-600 underline;
+}

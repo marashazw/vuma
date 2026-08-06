@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.vuma.app",
+      "sha256_cert_fingerprints": [
+        "C4:86:D6:6B:FB:C1:5F:6D:3B:04:D1:5D:2C:CC:7C:64:DF:EB:70:31:0A:25:2A:78:9A:65:B3:8E:5E:B0:1F:84"
+      ]
+    }
+  }
+]
