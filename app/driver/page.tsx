@@ -9,6 +9,7 @@ import { currencyFormat } from "@/lib/commission";
 import type { Ride, DriverProfile } from "@/lib/types";
 import { Loader2, Power, MapPin, ArrowRight, Users, Check, Sparkles, CalendarClock } from "lucide-react";
 import { useModal } from "@/components/ui/ModalProvider";
+import { TripReminder } from "@/components/ui/TripReminder";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -270,6 +271,8 @@ export default function DriverHomePage() {
 
   return (
     <div className="space-y-5">
+      <TripReminder role="driver" />
+
       {activeRide && (
         <Link href={`/driver/rides/${activeRide.id}`} className="card p-4 flex items-center justify-between bg-navy-800 text-paper block">
           <div>

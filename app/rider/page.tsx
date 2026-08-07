@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { LocationSearchInput } from "@/components/map/LocationSearchInput";
 import { NearbyDriversBadge } from "@/components/rider/NearbyDriversBadge";
+import { TripReminder } from "@/components/ui/TripReminder";
 import { suggestedFareRange, reverseGeocode, getRoadRoute, type RoadRoute } from "@/lib/geo";
 import { getWeatherAdvisory, type WeatherAdvisory } from "@/lib/weather";
 import { COUNTRIES } from "@/lib/constants";
@@ -311,6 +312,8 @@ export default function RiderHomePage() {
 
   return (
     <div className="space-y-5">
+      <TripReminder role="rider" />
+
       <div>
         <h1 className="text-2xl font-bold">Where to?</h1>
         <p className="text-navy-400 text-sm mt-1">Set your route, then name the fare you want to pay.</p>

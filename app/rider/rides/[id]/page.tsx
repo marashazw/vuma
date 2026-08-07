@@ -18,7 +18,7 @@ import { DownloadReceiptButton } from "@/components/ride/DownloadReceiptButton";
 import { DriverRatingForm } from "@/components/rider/DriverRatingForm";
 import type { Ride, RideOffer, DriverProfile, Profile, RideStop } from "@/lib/types";
 import { getWeatherAdvisory, type WeatherAdvisory } from "@/lib/weather";
-import { Loader2, X, Navigation, CloudRain, Snowflake, Sun } from "lucide-react";
+import { Loader2, X, Navigation, CloudRain, Snowflake, Sun, CalendarClock } from "lucide-react";
 import { useModal } from "@/components/ui/ModalProvider";
 
 const RideMap = dynamic(() => import("@/components/map/RideMap"), { ssr: false });
@@ -532,14 +532,39 @@ export default function RiderRideDetailPage({ params }: { params: Promise<{ id: 
             </p>
           )}
 
-          {approachRoute ? (
-            <div className="mt-4 flex items-center justify-center gap-2 text-jade-600 font-semibold">
-              <Navigation className="w-4 h-4" />
-              Arriving in ~{Math.max(Math.round(approachRoute.etaMin), 1)} min ({approachRoute.distanceKm.toFixed(1)} km away)
-            </div>
-          ) : (
-            <p className="text-xs text-navy-400 mt-4">Waiting for your driver's location&hellip;</p>
-          )}
+          {(() => {
+            const scheduledTime = ride.is_scheduled && ride.scheduled_at ? new Date(ride.scheduled_at).getTime() : null;
+            // Once genuinely close to the scheduled time, the driver could
+            // plausibly be en route — the normal arriving countdown becomes
+            // accurate again. Well before that, "arriving in X min" would
+            // be misleading, since the driver isn't actually heading there
+            // yet for an appointment hours or days away.
+            const isImminent = !scheduledTime || scheduledTime - Date.now() <= 45 * 60 * 1000;
+
+            if (ride.is_scheduled && !isImminent) {
+              return (
+                <div className="mt-4 flex items-center justify-center gap-2 text-navy-600 font-semibold">
+                  <CalendarClock className="w-4 h-4" />
+                  Driver confirmed for{" "}
+                  {new Date(ride.scheduled_at!).toLocaleString(undefined, {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </div>
+              );
+            }
+            return approachRoute ? (
+              <div className="mt-4 flex items-center justify-center gap-2 text-jade-600 font-semibold">
+                <Navigation className="w-4 h-4" />
+                Arriving in ~{Math.max(Math.round(approachRoute.etaMin), 1)} min ({approachRoute.distanceKm.toFixed(1)} km away)
+              </div>
+            ) : (
+              <p className="text-xs text-navy-400 mt-4">Waiting for your driver's location&hellip;</p>
+            );
+          })()}
 
           {ride?.is_scheduled ? (
             userId && (

@@ -239,12 +239,15 @@ function DriverRideDetailInner({ params }: { params: Promise<{ id: string }> }) 
     );
   }
 
-  // A driver can only have one active trip at a time. If this ride was
-  // just accepted while another is still in progress, this screen stays
-  // gated — no map, no fare, no Start button — until the current trip is
-  // completed. The driver is guided straight to the one they need to
-  // finish, not left guessing which trip to act on.
-  if (ride.status === "accepted" && otherActiveRideId) {
+  // A driver can only have one active immediate trip at a time. If this
+  // ride was just accepted while another is still in progress, this screen
+  // stays gated — no map, no fare, no Start button — until the current
+  // trip is completed. Scheduled rides are exempt: they're for a future
+  // time regardless, so there's no real conflict in viewing or preparing
+  // for one while another trip is currently underway — the driver simply
+  // won't be able to start it until its own scheduled time, by which point
+  // the current trip should be long finished anyway.
+  if (ride.status === "accepted" && !ride.is_scheduled && otherActiveRideId) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
         <Loader2 className="w-8 h-8 text-gold-500" />
@@ -268,8 +271,12 @@ function DriverRideDetailInner({ params }: { params: Promise<{ id: string }> }) 
           <div className="flex items-center gap-3">
             <PartyPopper className="w-6 h-6" />
             <div>
-              <p className="font-display font-bold text-lg">Accepted — let's go!</p>
-              <p className="text-jade-50 text-sm">Head to the pickup point when you're ready.</p>
+              <p className="font-display font-bold text-lg">{ride.is_scheduled ? "Accepted!" : "Accepted — let's go!"}</p>
+              <p className="text-jade-50 text-sm">
+                {ride.is_scheduled
+                  ? "Set a reminder for this appointment — you'll see it on your dashboard as it gets close."
+                  : "Head to the pickup point when you're ready."}
+              </p>
             </div>
           </div>
           <button onClick={() => setShowAcceptedBanner(false)} className="text-jade-100 hover:text-white">
