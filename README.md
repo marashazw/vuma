@@ -225,6 +225,20 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   seemed likely to be an unintended phrasing — implemented instead as free cancellation
   outside the 1-hour window, penalty only within it or on no-show, confirmed with the user
   before building.
+- **Accounting console (Admin → Transactions / Income Statement)** — the Transactions tab is
+  now a full filterable console: date range (latest first by default), driver, and
+  transaction type — including a breakdown by commission *source* (subscription rate,
+  referral credit, reward credit, country default), not just a single lumped commission
+  figure. A separate **Income Statement** view shows the state of the business for any
+  chosen period: commission and subscription revenue earned, broken down and totaled, next
+  to what's currently **owed** — driver prepaid wallet balances, the pro-rated *unearned*
+  portion of every active subscription (what's been paid but not yet "earned" by the
+  passage of time), rider wallet balances, and available rider referral credits. Figures are
+  kept separate by currency (ZAR/USD) throughout rather than incorrectly summed together.
+  Both pages export to CSV (opens natively in Excel) and the Income Statement has a
+  print-to-PDF button using the browser's own print dialog with dedicated print styling,
+  rather than adding a server-side PDF-generation dependency for something the browser
+  already does reliably.
 - **SOS safety system** — a rider or driver mid-trip can raise an SOS that (1) prompts an
   immediate call to local emergency services, and (2) automatically finds and notifies the 5
   nearest online, verified drivers with the vehicle plate/description and the other party's
@@ -363,9 +377,12 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
     rides: the lock-window cancellation rules, no-show penalty tracking, mutual-cancellation
     flow, and rider strike tracking. Also turns `profiles.is_suspended` into a genuinely
     enforced ban (it existed before this migration but was never actually checked anywhere).
-30. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
+30. Then run `supabase/migrations/029_accounting_console.sql` — adds commission-source
+    tracking to `transactions` (subscription rate / referral credit / reward credit / country
+    default), needed for the Transactions console's type breakdown and the Income Statement.
+31. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
     for both ZA and ZW so the driver subscription page isn't empty).
-31. Go to Project Settings → API and copy:
+32. Go to Project Settings → API and copy:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ keep this secret — never expose it

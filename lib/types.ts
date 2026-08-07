@@ -157,6 +157,7 @@ export interface Transaction {
   amount: number;
   commission_pct: number | null;
   commission_amount: number | null;
+  commission_source: string | null;
   currency: string;
   gateway: string | null;
   gateway_ref: string | null;

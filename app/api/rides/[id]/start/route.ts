@@ -77,6 +77,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     amount: fare,
     commission_pct: resolved.pct,
     commission_amount: resolved.amount,
+    commission_source: resolved.source,
     currency: ride.currency,
     gateway: "ride",
     status: "success",
