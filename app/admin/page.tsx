@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { StatCard } from "@/components/ui/StatCard";
 import { RidesChart } from "@/components/admin/RidesChart";
+import { QuickTasks } from "@/components/admin/QuickTasks";
 import { currencyFormat } from "@/lib/commission";
 import { Car, Users, Banknote, Percent } from "lucide-react";
 import { subDays, format, startOfDay } from "date-fns";
@@ -8,11 +9,41 @@ import { subDays, format, startOfDay } from "date-fns";
 export default async function AdminOverviewPage() {
   const supabase = await createClient();
 
-  const [{ count: riderCount }, { count: driverCount }, { data: rides }, { data: txns }] = await Promise.all([
+  const [
+    { count: riderCount },
+    { count: driverCount },
+    { data: rides },
+    { data: txns },
+    { count: pendingSubs },
+    { count: pendingTopups },
+    { data: pendingVerifications },
+    { data: pendingDeluxe },
+    { count: activeSos },
+    { count: duplicateFlags },
+    { count: suspendedDrivers },
+  ] = await Promise.all([
     supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "rider"),
     supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "driver"),
     supabase.from("rides").select("id, status, created_at").order("created_at", { ascending: false }).limit(500),
     supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(500),
+    supabase.from("manual_payment_submissions").select("*", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("driver_wallet_topups").select("*", { count: "exact", head: true }).eq("status", "pending"),
+    // Only counts as "needs review" once a driver has genuinely submitted
+    // documents — verification_status defaults to 'pending' for every
+    // brand-new signup too, so submitted_at is what distinguishes a real
+    // review request from someone who just hasn't touched the page yet.
+    supabase
+      .from("driver_profiles")
+      .select("user_id, profiles(full_name)")
+      .eq("verification_status", "pending")
+      .not("submitted_at", "is", null),
+    supabase.from("driver_profiles").select("user_id, profiles(full_name)").eq("deluxe_status", "pending"),
+    supabase.from("sos_alerts").select("*", { count: "exact", head: true }).eq("status", "active"),
+    supabase.from("driver_profiles").select("*", { count: "exact", head: true }).eq("duplicate_vehicle_flag", true),
+    supabase
+      .from("driver_profiles")
+      .select("*", { count: "exact", head: true })
+      .gt("suspended_until", new Date().toISOString()),
   ]);
 
   const completedRides = rides?.filter((r) => r.status === "completed").length || 0;
@@ -31,6 +62,16 @@ export default async function AdminOverviewPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Overview</h1>
+
+      <QuickTasks
+        pendingSubs={pendingSubs || 0}
+        pendingTopups={pendingTopups || 0}
+        pendingVerifications={pendingVerifications || []}
+        pendingDeluxe={pendingDeluxe || []}
+        activeSos={activeSos || 0}
+        duplicateFlags={duplicateFlags || 0}
+        suspendedDrivers={suspendedDrivers || 0}
+      />
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Riders" value={String(riderCount || 0)} icon={Users} />
