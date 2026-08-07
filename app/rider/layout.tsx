@@ -5,6 +5,7 @@ import { BottomNavClient } from "./bottom-nav-client";
 import { RiderDesktopTabs } from "./desktop-tabs-client";
 import { BackToAdminBar } from "@/components/admin/BackToAdminBar";
 import { ConnectivityBanner } from "@/components/ui/ConnectivityBanner";
+import { SuspendedScreen } from "@/components/ui/SuspendedScreen";
 
 export default async function RiderLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -14,10 +15,18 @@ export default async function RiderLayout({ children }: { children: React.ReactN
 
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase.from("profiles").select("role, is_super_admin").eq("id", user.id).single();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role, is_super_admin, suspended_until")
+    .eq("id", user.id)
+    .single();
 
   if (profile?.role === "driver") redirect("/driver");
   if (profile?.role === "admin") redirect("/admin");
+
+  if (profile?.suspended_until && new Date(profile.suspended_until) > new Date()) {
+    return <SuspendedScreen role="rider" suspendedUntil={profile.suspended_until} />;
+  }
 
   return (
     <div className="min-h-screen bg-paper pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-0">

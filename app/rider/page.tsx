@@ -201,11 +201,13 @@ export default function RiderHomePage() {
     .slice(0, 16);
   const isScheduledTimeValid = !isScheduled || (!!scheduledAt && new Date(scheduledAt) >= minScheduleDate);
   const deluxeMultiplier = isDeluxe ? (fareSettings?.deluxe_multiplier ?? 1.5) : 1;
+  const scheduledMultiplier = isScheduled ? (fareSettings?.scheduled_multiplier ?? 1.2) : 1;
+  const combinedMultiplier = deluxeMultiplier * scheduledMultiplier;
   const range = route
     ? suggestedFareRange(
         route.distanceKm,
-        (fareSettings?.base_fare ?? cfg.fallbackBaseFare) * deluxeMultiplier,
-        (fareSettings?.per_km ?? cfg.fallbackPerKm) * deluxeMultiplier,
+        (fareSettings?.base_fare ?? cfg.fallbackBaseFare) * combinedMultiplier,
+        (fareSettings?.per_km ?? cfg.fallbackPerKm) * combinedMultiplier,
         fareSettings?.low_multiplier ?? 0.85,
         fareSettings?.high_multiplier ?? 1.2,
         fareSettings?.round_to ?? cfg.fallbackRoundTo

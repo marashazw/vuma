@@ -7,6 +7,7 @@ import { SosListener } from "@/components/driver/SosListener";
 import { LocationBroadcaster } from "@/components/driver/LocationBroadcaster";
 import { BackToAdminBar } from "@/components/admin/BackToAdminBar";
 import { ConnectivityBanner } from "@/components/ui/ConnectivityBanner";
+import { SuspendedScreen } from "@/components/ui/SuspendedScreen";
 
 export default async function DriverLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -20,6 +21,15 @@ export default async function DriverLayout({ children }: { children: React.React
 
   if (profile?.role === "rider") redirect("/rider");
   if (profile?.role === "admin") redirect("/admin");
+
+  const { data: driverProfile } = await supabase
+    .from("driver_profiles")
+    .select("suspended_until, suspension_reason")
+    .eq("user_id", user.id)
+    .single();
+  if (driverProfile?.suspended_until && new Date(driverProfile.suspended_until) > new Date()) {
+    return <SuspendedScreen role="driver" suspendedUntil={driverProfile.suspended_until} reason={driverProfile.suspension_reason} />;
+  }
 
   return (
     <div className="min-h-screen bg-paper pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-0">

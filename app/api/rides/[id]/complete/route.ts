@@ -401,6 +401,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     driverUpdate.free_ride_credits = Math.max((driverProfile?.free_ride_credits || 1) - 1, 0);
   }
 
+  // Where a rider covered part of this fare using their own Vuma Wallet
+  // (change) credit, the driver received that much less in actual cash —
+  // Vuma facilitated that credit on the driver's behalf, so it's credited
+  // back into the driver's own prepaid wallet here, same as a top-up.
+  const walletAppliedAmount = Number(ride.wallet_applied) || 0;
+  if (walletAppliedAmount > 0) {
+    const newWalletBalance = Math.round((Number(driverProfile?.prepaid_wallet_balance || 0) + walletAppliedAmount) * 100) / 100;
+    driverUpdate.prepaid_wallet_balance = newWalletBalance;
+    await admin.from("driver_wallet_transactions").insert({
+      driver_id: ride.driver_id,
+      ride_id: ride.id,
+      type: "wallet_applied_reimbursement",
+      amount: walletAppliedAmount,
+      balance_after: newWalletBalance,
+      notes: "Rider covered part of this fare with their own Vuma Wallet credit — reimbursed to driver's wallet",
+    });
+  }
+
   if (creditValid) {
     await admin
       .from("ride_credits")

@@ -21,6 +21,7 @@ export default async function AdminOverviewPage() {
     { count: activeSos },
     { count: duplicateFlags },
     { count: suspendedDrivers },
+    { count: pendingAppeals },
   ] = await Promise.all([
     supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "rider"),
     supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "driver"),
@@ -44,6 +45,7 @@ export default async function AdminOverviewPage() {
       .from("driver_profiles")
       .select("*", { count: "exact", head: true })
       .gt("suspended_until", new Date().toISOString()),
+    supabase.from("suspension_appeals").select("*", { count: "exact", head: true }).eq("status", "pending"),
   ]);
 
   const completedRides = rides?.filter((r) => r.status === "completed").length || 0;
@@ -71,6 +73,7 @@ export default async function AdminOverviewPage() {
         activeSos={activeSos || 0}
         duplicateFlags={duplicateFlags || 0}
         suspendedDrivers={suspendedDrivers || 0}
+        pendingAppeals={pendingAppeals || 0}
       />
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">

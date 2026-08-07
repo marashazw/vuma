@@ -27,6 +27,7 @@ export function QuickTasks({
   activeSos,
   duplicateFlags,
   suspendedDrivers,
+  pendingAppeals,
 }: {
   pendingSubs: number;
   pendingTopups: number;
@@ -35,6 +36,7 @@ export function QuickTasks({
   activeSos: number;
   duplicateFlags: number;
   suspendedDrivers: number;
+  pendingAppeals: number;
 }) {
   const groups: TaskGroup[] = [
     { label: "Active SOS alert", count: activeSos, href: "/admin/safety", urgent: true },
@@ -52,6 +54,7 @@ export function QuickTasks({
     },
     { label: "Subscription payment to approve", count: pendingSubs, href: "/admin/subscriptions" },
     { label: "Wallet top-up to approve", count: pendingTopups, href: "/admin/wallet-topups" },
+    { label: "Suspension appeal to review", count: pendingAppeals, href: "/admin/appeals" },
     { label: "Duplicate vehicle plate flagged", count: duplicateFlags, href: "/admin/referrals" },
   ];
 

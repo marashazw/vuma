@@ -22,6 +22,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "This ride isn't in a startable state" }, { status: 409 });
   }
 
+  // A driver can only be actively driving one trip at a time. This is the
+  // real enforcement — the driver-side UI also guides them away from a
+  // newly-accepted ride while another is in progress, but that's just
+  // guidance; this check is what actually prevents it regardless of how
+  // the request gets made.
+  const { data: otherActiveRide } = await admin
+    .from("rides")
+    .select("id")
+    .eq("driver_id", ride.driver_id)
+    .eq("status", "in_progress")
+    .neq("id", rideId)
+    .limit(1)
+    .maybeSingle();
+  if (otherActiveRide) {
+    return NextResponse.json(
+      { error: "You have another trip already in progress — complete it before starting a new one." },
+      { status: 409 }
+    );
+  }
+
   const fare = Number(ride.final_fare ?? ride.rider_offer);
   const resolved = await resolveFullCommission(
     admin,

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, use, Suspense } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { StatusPill } from "@/components/ui/StatusPill";
@@ -36,6 +37,7 @@ function DriverRideDetailInner({ params }: { params: Promise<{ id: string }> }) 
 
   const [ride, setRide] = useState<Ride | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [otherActiveRideId, setOtherActiveRideId] = useState<string | null>(null);
   const [stops, setStops] = useState<RideStop[]>([]);
   const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null);
   const [matchedAlerts, setMatchedAlerts] = useState<RoadAlert[]>([]);
@@ -67,6 +69,25 @@ function DriverRideDetailInner({ params }: { params: Promise<{ id: string }> }) 
     setRide(data as Ride);
     const { data: stopsData } = await supabase.from("ride_stops").select("*").eq("ride_id", rideId).order("sequence");
     setStops((stopsData as RideStop[]) || []);
+
+    // Only relevant for a ride that's accepted but not yet started — check
+    // whether this driver has a *different* ride already in progress, so
+    // starting a new trip (or even seeing its full active-trip screen) can
+    // be gated behind finishing the one already underway.
+    if (data?.status === "accepted" && data.driver_id) {
+      const { data: otherActive } = await supabase
+        .from("rides")
+        .select("id")
+        .eq("driver_id", data.driver_id)
+        .eq("status", "in_progress")
+        .neq("id", rideId)
+        .limit(1)
+        .maybeSingle();
+      setOtherActiveRideId(otherActive?.id || null);
+    } else {
+      setOtherActiveRideId(null);
+    }
+
     setLoading(false);
   }, [rideId, supabase]);
 
@@ -214,6 +235,28 @@ function DriverRideDetailInner({ params }: { params: Promise<{ id: string }> }) 
     return (
       <div className="flex items-center justify-center py-24 text-navy-300">
         <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading trip&hellip;
+      </div>
+    );
+  }
+
+  // A driver can only have one active trip at a time. If this ride was
+  // just accepted while another is still in progress, this screen stays
+  // gated — no map, no fare, no Start button — until the current trip is
+  // completed. The driver is guided straight to the one they need to
+  // finish, not left guessing which trip to act on.
+  if (ride.status === "accepted" && otherActiveRideId) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
+        <Loader2 className="w-8 h-8 text-gold-500" />
+        <div>
+          <p className="font-semibold text-navy-700">You have a trip already in progress</p>
+          <p className="text-sm text-navy-400 mt-1 max-w-xs">
+            Finish that trip first — this one will be ready for you as soon as you do.
+          </p>
+        </div>
+        <Link href={`/driver/rides/${otherActiveRideId}`} className="btn-primary">
+          Go to active trip
+        </Link>
       </div>
     );
   }

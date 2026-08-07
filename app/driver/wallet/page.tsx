@@ -22,6 +22,7 @@ export default function DriverWalletPage() {
   const [amount, setAmount] = useState<number | "">("");
   const [referenceCode, setReferenceCode] = useState("");
   const [proofFile, setProofFile] = useState<File | null>(null);
+  const [consented, setConsented] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -72,6 +73,10 @@ export default function DriverWalletPage() {
       await modal.alert("Add a reference code or upload proof of payment before submitting.");
       return;
     }
+    if (!consented) {
+      await modal.alert("You need to confirm the statement below before submitting a top-up.");
+      return;
+    }
     setSubmitting(true);
 
     let proofPath: string | null = null;
@@ -95,6 +100,7 @@ export default function DriverWalletPage() {
       reference_code: referenceCode.trim() || null,
       proof_of_payment_path: proofPath,
       status: "pending",
+      consented_at: new Date().toISOString(),
     });
 
     setSubmitting(false);
@@ -105,6 +111,7 @@ export default function DriverWalletPage() {
     setAmount("");
     setReferenceCode("");
     setProofFile(null);
+    setConsented(false);
     await load();
   }
 
@@ -181,9 +188,23 @@ export default function DriverWalletPage() {
             </button>
           </div>
         )}
+
+        <label className="flex items-start gap-2.5 cursor-pointer bg-navy-50 rounded-lg px-3 py-2.5">
+          <input
+            type="checkbox"
+            className="w-4 h-4 mt-0.5 shrink-0 accent-gold-400"
+            checked={consented}
+            onChange={(e) => setConsented(e.target.checked)}
+          />
+          <span className="text-xs text-navy-600">
+            I agree that this deposit will not be refundable and will only be applied towards ride commissions
+            and subscriptions.
+          </span>
+        </label>
+
         <button
           className="btn-primary w-full"
-          disabled={submitting || !amount || Number(amount) <= 0}
+          disabled={submitting || !amount || Number(amount) <= 0 || !consented}
           onClick={submitTopup}
         >
           {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}

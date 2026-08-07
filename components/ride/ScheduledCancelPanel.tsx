@@ -67,18 +67,20 @@ export function ScheduledCancelPanel({
   }
 
   async function directCancel(isNoShowReport = false) {
-    const consequence = isDriver
+    const consequence = isNoShowReport
+      ? "This will flag the driver's account. A second flag within 3 months results in a 7-day suspension for them."
+      : isDriver
       ? withinLockWindow
-        ? "You'll be charged a 50% no-show/late-cancellation penalty from your wallet."
+        ? "This will flag your account. A second flag within 3 months results in a 7-day suspension."
         : null
       : withinLockWindow
-      ? "This is within 1 hour of the scheduled time — cancelling will flag your account. A second flag results in suspension."
+      ? "This is within 1 hour of the scheduled time — cancelling will flag your account. A second flag within 3 months results in a 7-day suspension."
       : null;
 
     const ok = await modal.confirm(
       consequence
         ? `${consequence} Are you sure you want to cancel?`
-        : "Cancel this scheduled ride? Since it's well ahead of the scheduled time, no penalty applies.",
+        : "Cancel this scheduled ride? Since it's well ahead of the scheduled time, no consequence applies.",
       { confirmLabel: "Yes, cancel", danger: true }
     );
     if (!ok) return;
@@ -87,7 +89,10 @@ export function ScheduledCancelPanel({
     const res = await fetch(`/api/rides/${ride.id}/cancel`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason: isNoShowReport ? "Reported no-show" : isDriver ? "Driver cancelled" : "Rider cancelled" }),
+      body: JSON.stringify({
+        reason: isNoShowReport ? "Reported no-show" : isDriver ? "Driver cancelled" : "Rider cancelled",
+        noShowReport: isNoShowReport,
+      }),
     });
     setBusy(false);
     if (!res.ok) {

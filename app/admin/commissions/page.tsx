@@ -57,6 +57,7 @@ export default function AdminCommissionsPage() {
         high_multiplier: f.high_multiplier,
         round_to: f.round_to,
         deluxe_multiplier: f.deluxe_multiplier,
+        scheduled_multiplier: f.scheduled_multiplier,
       }),
     });
 
@@ -212,6 +213,19 @@ export default function AdminCommissionsPage() {
                       }
                     />
                   </div>
+                  <div>
+                    <label className="label block mb-1">Scheduled ×</label>
+                    <input
+                      type="number"
+                      step="0.05"
+                      min="1"
+                      className="input !py-2"
+                      value={f.scheduled_multiplier}
+                      onChange={(e) =>
+                        setFareSettings((prev) => ({ ...prev, [c]: { ...f, scheduled_multiplier: Number(e.target.value) } }))
+                      }
+                    />
+                  </div>
                 </div>
                 <p className="text-xs text-navy-400">
                   Example: a 10 km trip suggests{" "}
@@ -230,7 +244,16 @@ export default function AdminCommissionsPage() {
                       Math.round(((f.base_fare + 10 * f.per_km) * f.deluxe_multiplier) / (f.round_to || 1)) * (f.round_to || 1)
                     ).toFixed(2)}
                   </span>{" "}
-                  and {f.deluxe_multiplier}× commission
+                  and {f.deluxe_multiplier}× commission &middot; a scheduled Deluxe trip stacks both, suggesting{" "}
+                  <span className="fare-figure">
+                    {COUNTRIES[c].currencySymbol}
+                    {(
+                      Math.round(
+                        ((f.base_fare + 10 * f.per_km) * f.deluxe_multiplier * f.scheduled_multiplier) / (f.round_to || 1)
+                      ) * (f.round_to || 1)
+                    ).toFixed(2)}
+                  </span>{" "}
+                  and {(f.deluxe_multiplier * f.scheduled_multiplier).toFixed(2)}× commission
                 </p>
                 <button
                   className="btn-dark !py-2"

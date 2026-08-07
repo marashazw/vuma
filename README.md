@@ -212,19 +212,35 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   time instead of immediately (a "Schedule for later" toggle after route selection; requires
   at least 30 minutes' notice). Drivers see a clearly marked "SCHEDULED TRIP" badge on the
   open-requests feed with a "view details" expansion showing the date/time before they decide
-  whether to bid. Once accepted, cancellation carries real consequences within 1 hour of the
-  scheduled time: a driver who cancels late or doesn't show up is charged a 50% penalty from
-  their wallet; a rider who cancels late is flagged, and a second flag results in suspension
-  (enforced by turning `profiles.is_suspended` — a field that existed before this feature but
-  was never actually checked anywhere — into a real, RLS-enforced ban). Either side can
-  instead **propose a mutual cancellation** with a reason (flight delay, illness, etc.); if
-  the other side accepts, the ride cancels with no penalty or strike to either party. A rider
-  can also report a driver no-show once the scheduled time has passed. **Interpretation
-  note**: the source requirement's exact wording ("charged even before the 1-hour locked
-  period") would have penalized a driver for cancelling *however* far in advance, which
-  seemed likely to be an unintended phrasing — implemented instead as free cancellation
-  outside the 1-hour window, penalty only within it or on no-show, confirmed with the user
-  before building.
+  whether to bid. Once accepted, cancelling within 1 hour of the scheduled time — or a driver
+  no-show — flags the responsible party's account (**not** a monetary penalty; an earlier
+  version charged drivers 50% of the fare, since replaced with a flag-based approach applied
+  equally to both roles). **A second flag within a rolling 3-month window results in a 7-day
+  suspension** (not permanent). A suspended rider or driver can submit an **appeal**
+  (Admin → Appeals reviews these, with final discretion resting with admin — approving an
+  appeal lifts the suspension immediately). Either side can instead **propose a mutual
+  cancellation** with a reason (flight delay, illness, etc.); if the other side accepts, no
+  flag applies to either party. A rider can also report a driver no-show once the scheduled
+  time has passed — this correctly flags the driver, not the rider making the report. Admins
+  can also apply a **scheduled-trip fee factor** (Admin → Commissions, "Scheduled ×"),
+  affecting both fare guidance and commission the same way the Vuma Deluxe multiplier does —
+  the two **stack** rather than override each other, so a scheduled Deluxe ride reflects
+  both factors combined.
+- **A driver can only have one active trip at a time** — if a driver accepts a new ride while
+  another is still `in_progress`, that new ride's screen stays gated (no map, no fare, no
+  Start button — just a clear "finish your current trip first" prompt with a direct link to
+  it) until the current trip is completed. Enforced server-side in the trip-start route
+  itself, not just as a UI suggestion — a request to start a second trip while one is already
+  in progress is rejected regardless of how it's made.
+- **Driver wallet — subscription payment and rider-credit reimbursement** — a driver can now
+  pay for a subscription plan directly from their prepaid wallet balance (mirroring the
+  existing "pay with credit balance" flow exactly). Separately, when a rider covers part of a
+  fare using their own Vuma Wallet (change) credit, the driver receives that much less in
+  actual cash — so that amount is now automatically credited back into the driver's own
+  prepaid wallet at trip completion, since Vuma facilitated that credit on the driver's
+  behalf. Wallet top-ups now also require an explicit, timestamped consent confirmation
+  ("this deposit will not be refundable and will only be applied towards ride commissions and
+  subscriptions") before submission.
 - **Accounting console (Admin → Transactions / Income Statement)** — the Transactions tab is
   now a full filterable console: date range (latest first by default), driver, and
   transaction type — including a breakdown by commission *source* (subscription rate,
@@ -380,9 +396,13 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
 30. Then run `supabase/migrations/029_accounting_console.sql` — adds commission-source
     tracking to `transactions` (subscription rate / referral credit / reward credit / country
     default), needed for the Transactions console's type breakdown and the Income Statement.
-31. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
+31. Then run `supabase/migrations/030_scheduled_rides_policy_overhaul.sql` — replaces the
+    driver's 50% no-show penalty with a flag-based system shared by both roles (a second
+    flag within 3 months → 7-day suspension, not permanent), adds suspension appeals, wallet
+    top-up consent tracking, and the admin-configurable scheduled-trip fee factor.
+32. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
     for both ZA and ZW so the driver subscription page isn't empty).
-32. Go to Project Settings → API and copy:
+33. Go to Project Settings → API and copy:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ keep this secret — never expose it

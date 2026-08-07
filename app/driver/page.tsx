@@ -403,8 +403,8 @@ export default function DriverHomePage() {
                         })}
                     </p>
                     <p className="text-xs text-navy-500 mt-1">
-                      Cancelling within 1 hour of this time, or not showing up, charges a 50% no-show penalty from
-                      your wallet or subscription standing.
+                      Cancelling within 1 hour of this time, or not showing up, flags your account. A second flag
+                      within 3 months results in a 7-day suspension.
                     </p>
                   </div>
                 )}

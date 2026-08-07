@@ -332,7 +332,13 @@ export interface DriverWalletTopup {
   created_at: string;
 }
 
-export type WalletTransactionType = "topup" | "commission_deduction" | "no_show_penalty" | "admin_adjustment";
+export type WalletTransactionType =
+  | "topup"
+  | "commission_deduction"
+  | "no_show_penalty"
+  | "admin_adjustment"
+  | "subscription_payment"
+  | "wallet_applied_reimbursement";
 
 export interface DriverWalletTransaction {
   id: string;
@@ -371,6 +377,7 @@ export interface FareSettings {
   high_multiplier: number;
   round_to: number;
   deluxe_multiplier: number;
+  scheduled_multiplier: number;
   currency: string;
   updated_by: string | null;
   updated_at: string;

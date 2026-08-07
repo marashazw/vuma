@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const LOCK_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-const NO_SHOW_PENALTY_RATE = 0.5; // 50% of trip value
+const STRIKE_WINDOW_MS = 90 * 24 * 60 * 60 * 1000; // ~3 months, rolling
+const SUSPENSION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -13,13 +14,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
-  const { reason } = await req.json().catch(() => ({ reason: null }));
+  const { reason, noShowReport } = await req.json().catch(() => ({ reason: null, noShowReport: false }));
 
   const { data: ride } = await supabase
     .from("rides")
-    .select(
-      "rider_id, driver_id, status, applied_credit_id, wallet_applied, currency, is_scheduled, scheduled_at, no_show_penalty_charged, final_fare, rider_offer"
-    )
+    .select("rider_id, driver_id, status, applied_credit_id, wallet_applied, currency, is_scheduled, scheduled_at, no_show_penalty_charged")
     .eq("id", id)
     .single();
   if (!ride) return NextResponse.json({ error: "Ride not found" }, { status: 404 });
@@ -35,42 +34,47 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const isDriver = ride.driver_id === user.id;
   const isRider = ride.rider_id === user.id;
 
-  // Scheduled-ride lock-window consequences — only relevant for an
-  // accepted scheduled ride, and only once (no_show_penalty_charged
-  // guards against a double-charge if cancel is somehow called twice).
+  // Unified flag-based consequence for either role cancelling within the
+  // 1-hour lock window (or a driver no-show) on a scheduled ride —
+  // deliberately not monetary. A single flag carries no consequence by
+  // itself; a second flag within a rolling 3-month window results in a
+  // 7-day suspension, not a permanent ban. no_show_penalty_charged is
+  // reused here as a "strike already applied to this ride" guard, despite
+  // its now-outdated name, to avoid double-striking if cancel is somehow
+  // called twice for the same ride.
   let strikeApplied = false;
-  let penaltyCharged = 0;
+  let suspensionApplied = false;
   if (ride.is_scheduled && ride.scheduled_at && ride.status === "accepted" && !ride.no_show_penalty_charged) {
     const withinLockWindow = new Date(ride.scheduled_at).getTime() - Date.now() <= LOCK_WINDOW_MS;
 
-    if (isDriver && withinLockWindow) {
-      const fare = Number(ride.final_fare ?? ride.rider_offer);
-      penaltyCharged = Math.round(fare * NO_SHOW_PENALTY_RATE * 100) / 100;
-      const { data: driverProfile } = await admin
-        .from("driver_profiles")
-        .select("prepaid_wallet_balance")
-        .eq("user_id", ride.driver_id)
-        .single();
-      const balanceAfter = Math.round((Number(driverProfile?.prepaid_wallet_balance || 0) - penaltyCharged) * 100) / 100;
-      await admin.from("driver_profiles").update({ prepaid_wallet_balance: balanceAfter }).eq("user_id", ride.driver_id);
-      await admin.from("driver_wallet_transactions").insert({
-        driver_id: ride.driver_id,
-        ride_id: id,
-        type: "no_show_penalty",
-        amount: -penaltyCharged,
-        balance_after: balanceAfter,
-        notes: "50% no-show/late-cancellation penalty on a scheduled ride",
-      });
-    }
-
-    if (isRider && withinLockWindow) {
+    if ((isDriver || isRider) && withinLockWindow) {
       strikeApplied = true;
-      const { data: riderProfile } = await admin.from("profiles").select("scheduled_ride_strikes").eq("id", ride.rider_id).single();
-      const newStrikes = (riderProfile?.scheduled_ride_strikes || 0) + 1;
-      await admin
-        .from("profiles")
-        .update({ scheduled_ride_strikes: newStrikes, is_suspended: newStrikes >= 2 })
-        .eq("id", ride.rider_id);
+      // A rider reporting a driver no-show strikes the driver, not
+      // themselves — they aren't the one who committed the infraction.
+      const profileId = noShowReport && isRider ? ride.driver_id : isDriver ? ride.driver_id : ride.rider_id;
+      const role = noShowReport && isRider ? "driver" : isDriver ? "driver" : "rider";
+
+      await admin.from("cancellation_strikes").insert({ profile_id: profileId, role, ride_id: id });
+
+      const windowStart = new Date(Date.now() - STRIKE_WINDOW_MS).toISOString();
+      const { count } = await admin
+        .from("cancellation_strikes")
+        .select("*", { count: "exact", head: true })
+        .eq("profile_id", profileId)
+        .gte("created_at", windowStart);
+
+      if ((count || 0) >= 2) {
+        suspensionApplied = true;
+        const suspendedUntil = new Date(Date.now() + SUSPENSION_MS).toISOString();
+        if (isDriver) {
+          await admin
+            .from("driver_profiles")
+            .update({ suspended_until: suspendedUntil, suspension_reason: "Second late-cancellation/no-show flag on a scheduled ride within 3 months" })
+            .eq("user_id", profileId);
+        } else {
+          await admin.from("profiles").update({ suspended_until: suspendedUntil }).eq("id", profileId);
+        }
+      }
     }
   }
 
@@ -80,7 +84,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       status: "cancelled",
       cancel_reason: reason,
       cancelled_by: user.id,
-      no_show_penalty_charged: penaltyCharged > 0 ? true : ride.no_show_penalty_charged,
+      no_show_penalty_charged: strikeApplied ? true : ride.no_show_penalty_charged,
     })
     .eq("id", id);
 
@@ -106,5 +110,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
   }
 
-  return NextResponse.json({ ok: true, penaltyCharged, strikeApplied });
+  return NextResponse.json({ ok: true, strikeApplied, suspensionApplied });
 }

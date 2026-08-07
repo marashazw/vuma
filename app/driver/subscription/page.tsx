@@ -11,7 +11,7 @@ import type {
   PaymentInstructions,
   ManualPaymentSubmission,
 } from "@/lib/types";
-import { Loader2, CheckCircle2, Smartphone, CreditCard, Landmark, Clock, XCircle, Gift, Upload, ExternalLink, Paperclip, X } from "lucide-react";
+import { Loader2, CheckCircle2, Smartphone, CreditCard, Landmark, Clock, XCircle, Gift, Upload, ExternalLink, Paperclip, X, Wallet } from "lucide-react";
 import { useModal } from "@/components/ui/ModalProvider";
 import { format } from "date-fns";
 
@@ -44,6 +44,8 @@ function DriverSubscriptionInner() {
   const [submittingManual, setSubmittingManual] = useState<string | null>(null);
   const [creditBalance, setCreditBalance] = useState(0);
   const [spendingCredit, setSpendingCredit] = useState<string | null>(null);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [spendingWallet, setSpendingWallet] = useState<string | null>(null);
   const [showAltPayment, setShowAltPayment] = useState<string | null>(null);
 
   useEffect(() => {
@@ -94,8 +96,13 @@ function DriverSubscriptionInner() {
       .order("created_at", { ascending: false });
     setPendingManual((manualSubs as any) || []);
 
-    const { data: driverProfile } = await supabase.from("driver_profiles").select("credit_balance").eq("user_id", user.id).single();
+    const { data: driverProfile } = await supabase
+      .from("driver_profiles")
+      .select("credit_balance, prepaid_wallet_balance")
+      .eq("user_id", user.id)
+      .single();
     setCreditBalance(Number(driverProfile?.credit_balance) || 0);
+    setWalletBalance(Number(driverProfile?.prepaid_wallet_balance) || 0);
 
     setLoading(false);
   }
@@ -154,6 +161,23 @@ function DriverSubscriptionInner() {
       return;
     }
     setNotice("Subscription activated using your credit balance!");
+    await load();
+  }
+
+  async function spendWalletOnPlan(plan: SubscriptionPlan) {
+    setSpendingWallet(plan.id);
+    const res = await fetch("/api/driver/wallet/spend-subscription", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ planId: plan.id }),
+    });
+    const data = await res.json();
+    setSpendingWallet(null);
+    if (!res.ok) {
+      await modal.alert(data.error);
+      return;
+    }
+    setNotice("Subscription activated using your wallet balance!");
     await load();
   }
 
@@ -276,8 +300,8 @@ function DriverSubscriptionInner() {
             <div className="space-y-4">
               <p className="text-sm font-semibold text-navy-700">
                 {paymentInstructions?.gateway_enabled
-                  ? "There are 3 ways you can pay:"
-                  : "There are 2 ways you can pay right now — card payments are coming soon:"}
+                  ? "There are 4 ways you can pay:"
+                  : "There are 3 ways you can pay right now — card payments are coming soon:"}
               </p>
 
               {/* 1. Credit balance ("by subscription" — your earned credit, redeemed toward this) */}
@@ -297,9 +321,26 @@ function DriverSubscriptionInner() {
                 )}
               </div>
 
-              {/* 2. Manual payment — the default, primary option */}
+              {/* 2. Prepaid wallet balance — a driver's own topped-up balance */}
               <div>
-                <p className="label mb-2 !text-[#D97757]">2. Manually, as below</p>
+                <p className="label mb-2 !text-[#D97757]">2. From your wallet balance</p>
+                {walletBalance >= plan.price ? (
+                  <button className="btn-primary w-full" disabled={!!spendingWallet} onClick={() => spendWalletOnPlan(plan)}>
+                    {spendingWallet === plan.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />} Pay
+                    with wallet balance ({currencyFormat(walletBalance, plan.currency)} available)
+                  </button>
+                ) : (
+                  <p className="text-xs text-navy-400">
+                    {walletBalance > 0
+                      ? `You have ${currencyFormat(walletBalance, plan.currency)} in your wallet — not quite enough for this plan yet.`
+                      : "Top up your prepaid wallet, then pay for a subscription straight from it — see the Wallet tab."}
+                  </p>
+                )}
+              </div>
+
+              {/* 3. Manual payment — the default, primary option */}
+              <div>
+                <p className="label mb-2 !text-[#D97757]">3. Manually, as below</p>
                 <div className="border border-navy-100 rounded-xl p-4 space-y-3">
                   <div>
                     <p className="label mb-1">{paymentInstructions?.method_label || "Mobile wallet transfer"}</p>
@@ -379,7 +420,7 @@ function DriverSubscriptionInner() {
               {/* 3. Card/mobile-money gateways — alternative option, hidden until gateway integration is ready */}
               {paymentInstructions?.gateway_enabled && (
                 <div>
-                  <p className="label mb-2 !text-[#D97757]">3. Prefer to pay by card</p>
+                  <p className="label mb-2 !text-[#D97757]">4. Prefer to pay by card</p>
                   {showAltPayment !== plan.id ? (
                     <button className="btn-primary w-full" onClick={() => setShowAltPayment(plan.id)}>
                       <CreditCard className="w-4 h-4" /> Pay by card or {country === "ZA" ? "PayFast" : "EcoCash/Paynow"} instead

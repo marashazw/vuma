@@ -15,6 +15,54 @@ existing code.
 
 ---
 
+## Where you are right now
+
+Based on everything done so far, here's the honest status:
+
+- [x] **Step 1** — Play Console developer account created (Personal), $25 paid, identity verified
+- [x] **Step 2** — Bubblewrap CLI installed
+- [x] **Step 3** — Android project generated at `C:\vuma-android`, signing key created and backed up
+- [x] **Step 4** — Fingerprint confirmed (`C4:86:D6:6B:...`), `assetlinks.json` live on the deployed site
+- [x] **Step 5** — APK built and tested on a real device — confirmed opening full-screen, no browser bar
+- [ ] **Step 6** — Store listing assets (below)
+- [ ] **Step 7** — Create the app listing in Play Console
+- [ ] **Step 8** — Upload the app bundle, run closed testing (mandatory 12 testers / 14 days for a Personal account)
+- [ ] **Step 9** — Submit for review
+
+**So: start from Step 6 below.** Steps 1–5 don't need repeating unless
+something changes (see "After approval" at the bottom for when a rebuild
+is actually needed — spoiler: not for ordinary feature updates, since a
+TWA loads your live site rather than embedding it).
+
+Since a lot has been added to Vuma since Step 5's APK was built and tested,
+it's worth reinstalling and clicking through the app once more before
+moving on — see the box just below.
+
+### Should you rebuild the APK/AAB first?
+
+**Short answer: no, not because of new features.** A TWA doesn't embed your
+web app's code — it's a thin wrapper that loads `vuma-self.vercel.app` live,
+the same way it would in a browser tab, just without the browser chrome. Every
+feature built since the APK was tested (the driver wallet, scheduled rides,
+the Drivers Forum, the accounting console, all of it) is *already* live
+through that same installed APK right now, with zero rebuild needed — that's
+the whole advantage of this approach over a native rewrite.
+
+You'd only need to rebuild (repeat Steps 3–5 with the same signing key) if
+`twa-manifest.json` itself changes — a different app name, icon, color
+scheme, or version number. Nothing like that has changed, so the APK you
+already tested is the same one whose `.aab` sibling you'll upload in Step 8.
+
+**Do this instead**: reopen the already-installed app on your test device (or
+reinstall via `bubblewrap install` if you've since uninstalled it) and click
+through a few of the newer screens — Wallet, Forum, a scheduled ride request
+— just to confirm they load correctly inside the wrapper the way they do in a
+normal browser tab. This costs a few minutes and catches anything
+TWA-specific (unlikely, but cheap to rule out) before it's in front of Google
+or real testers.
+
+---
+
 ## Before you start — what you need
 
 - [ ] Vuma already deployed and working on a real HTTPS domain (you have this: your Vercel URL)
@@ -191,14 +239,40 @@ Still needed from you:
 3. Add release notes (e.g., "Initial release")
 4. Save and review
 
-### Recommended: use Internal Testing first
+### Required for Personal accounts: closed testing before Production
 
-Rather than going straight to full public **Production**, use Play Console's
-**Internal testing** track first:
-- Instantly available (no review wait) to testers you email-invite
-- Lets you and a few trusted people install the real Play Store version and
-  confirm everything works before the public sees it
-- Once happy, promote the same build to **Production** from within Play Console
+Google requires any **Personal** developer account (as opposed to an
+Organization account) to run a **closed test** before it can request
+Production access for a new app. This isn't optional or just best practice —
+Play Console will block you from releasing to Production until it's done:
+
+- **At least 12 testers** must opt in and stay enrolled
+- They must remain enrolled for **at least 14 continuous days**
+- The 14-day clock starts once testers actually **opt in**, not when you
+  invite them — so recruit and get them opted in as early as possible
+- During this window, actually use the app yourselves and fix anything real
+  usage surfaces — this is Google's way of making sure you didn't skip
+  testing entirely
+
+**How to set it up:**
+1. Play Console → **Testing → Closed testing** → **Create track**
+2. Upload `app-release-bundle.aab` to this track (not Production, not
+   Internal testing — Closed testing specifically satisfies this requirement)
+3. Under **Testers**, create an email list — add at least 12 Gmail addresses
+   (friends, family, early drivers, anyone willing). Google Groups or a
+   simple list of individual emails both work.
+4. Save, and Play Console gives you an **opt-in URL** — send this to every
+   tester. They must click it and install via that link (not a regular Play
+   Store search) for their enrollment to count.
+5. Track progress under **Testing → Closed testing** — Play Console shows
+   how many testers have opted in and how many days of the 14 have elapsed
+6. Once both conditions are met (12+ testers, 14+ days), Play Console
+   unlocks the option to **promote this release to Production**
+
+While waiting out the 14 days, this is also a good time to fix anything
+testers report, and to review **Play Console's pre-launch report** (an
+automated scan Google runs on every upload, checking for crashes and basic
+accessibility issues) under the same Testing section.
 
 ---
 

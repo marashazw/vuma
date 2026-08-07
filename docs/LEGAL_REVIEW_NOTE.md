@@ -37,25 +37,31 @@ book a ride ahead of time. Once a driver accepts:
 
 - Either side can cancel free of charge up to 1 hour before the scheduled
   time.
-- A driver who cancels within that 1-hour window, or doesn't show up, can be
-  charged **up to 50% of the agreed fare**, deducted from a prepaid wallet
-  balance they maintain with Vuma.
-- A rider who cancels within that window gets their account flagged; a
-  **second flag results in account suspension**.
+- A driver who cancels within that 1-hour window, or doesn't show up, gets
+  their account **flagged** (no monetary penalty — an earlier draft had a
+  50% fee here, since removed in favor of a flag-based approach applied
+  equally to both roles).
+- A rider who cancels within that window also gets flagged.
+- A **second flag within a rolling 3-month period**, for either role,
+  results in a **7-day suspension** (not permanent).
+- A suspended user can submit an appeal explaining the circumstances — Vuma
+  reviews it and has final discretion over whether the suspension is lifted
+  early, reduced, or upheld.
 - Either side can instead propose cancelling by mutual agreement (illness,
-  a flight delay, etc.) — if the other side accepts, no penalty or flag
-  applies to either party.
+  a flight delay, etc.) — if the other side accepts, no flag applies to
+  either party.
 
 Specific questions for you:
-- Is a 50% penalty, structured this way, likely to be treated as an
-  enforceable liquidated-damages clause, or could it read as a penalty
-  clause a court might strike down, in either jurisdiction?
-- Does the two-strikes-and-suspended mechanism for riders need any kind of
-  notice, appeal, or "contest this flag" right built in before it's
-  defensible?
-- Is deducting the penalty from a driver's own prepaid balance (money they
-  put in themselves) different, legally, from charging them after the fact
-  — and does that matter here?
+- Does a 7-day, time-limited suspension (versus the earlier permanent-ban
+  or monetary-penalty approaches) sit more comfortably from a fairness/
+  proportionality standpoint, or does it raise different concerns?
+- Is the appeal process as described (submit a reason, Vuma has final
+  discretion) sufficient due process, or would you recommend something more
+  formal — a minimum response time, a required written explanation for a
+  rejection, etc.?
+- Does a rolling 3-month window for counting flags need to be disclosed more
+  precisely (e.g., exact wording on how the window is calculated) to be
+  enforceable as written?
 
 ### 3. Section 7 — limitation of liability
 
@@ -67,9 +73,12 @@ jurisdiction-specific rewording rather than a light edit.
 
 ## Also worth a glance if you have time
 
-- Section 3's wallet-refund question — I've left it genuinely open (see the
-  inline note) on whether an unused prepaid wallet balance should be
-  refundable on request, and if so, under what conditions.
+- Section 3's wallet consent language — drivers must explicitly confirm
+  (checkbox, at the moment of each top-up) that their deposit is
+  non-refundable and only applicable toward commission or subscription
+  fees. Worth a quick check that this consent mechanism is sufficient on
+  its own, or whether it needs to also appear in these terms with more
+  specific wording.
 - The privacy policy (`app/privacy/page.tsx`) has the same entity-name
   placeholder and could use a pass too, though it's a lower-complexity
   document than the terms.
