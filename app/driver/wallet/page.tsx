@@ -5,8 +5,9 @@ import { createClient } from "@/lib/supabase/client";
 import { useModal } from "@/components/ui/ModalProvider";
 import { currencyFormat } from "@/lib/commission";
 import { COUNTRIES } from "@/lib/constants";
+import { checkLowBalance, type LowBalanceCheck } from "@/lib/wallet";
 import type { DriverWalletTopup, DriverWalletTransaction, CountryCode } from "@/lib/types";
-import { Loader2, Wallet, Upload, Paperclip, X, ArrowUpRight, ArrowDownRight, Clock } from "lucide-react";
+import { Loader2, Wallet, Upload, Paperclip, X, ArrowUpRight, ArrowDownRight, Clock, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 
 export default function DriverWalletPage() {
@@ -16,6 +17,7 @@ export default function DriverWalletPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [country, setCountry] = useState<CountryCode>("ZA");
   const [balance, setBalance] = useState(0);
+  const [lowBalance, setLowBalance] = useState<LowBalanceCheck | null>(null);
   const [transactions, setTransactions] = useState<DriverWalletTransaction[]>([]);
   const [pendingTopups, setPendingTopups] = useState<DriverWalletTopup[]>([]);
 
@@ -41,7 +43,9 @@ export default function DriverWalletPage() {
       .select("prepaid_wallet_balance")
       .eq("user_id", user.id)
       .single();
-    setBalance(Number(driverProfile?.prepaid_wallet_balance) || 0);
+    const currentBalance = Number(driverProfile?.prepaid_wallet_balance) || 0;
+    setBalance(currentBalance);
+    setLowBalance(await checkLowBalance(supabase, user.id, currentBalance));
 
     const { data: txData } = await supabase
       .from("driver_wallet_transactions")
@@ -139,6 +143,19 @@ export default function DriverWalletPage() {
           online — unless you're on an active subscription plan.
         </p>
       </div>
+
+      {lowBalance?.isLow && (
+        <div className="card p-4 flex items-start gap-2.5 bg-gold-50 border-gold-200">
+          <AlertTriangle className="w-4 h-4 text-gold-600 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-gold-700">Your balance is getting low</p>
+            <p className="text-xs text-navy-500 mt-0.5">
+              Based on your usual top-up size and how much you typically spend per day, it's worth topping up soon
+              to avoid running out mid-shift.
+            </p>
+          </div>
+        </div>
+      )}
 
       {pendingTopups.map((t) => (
         <div key={t.id} className="card p-4 flex items-center gap-3 bg-gold-50 border-gold-200">

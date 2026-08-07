@@ -6,8 +6,9 @@ import { createClient } from "@/lib/supabase/client";
 import { expireStaleOffers } from "@/lib/offers";
 import { haversineKm } from "@/lib/geo";
 import { currencyFormat } from "@/lib/commission";
+import { checkLowBalance, type LowBalanceCheck } from "@/lib/wallet";
 import type { Ride, DriverProfile } from "@/lib/types";
-import { Loader2, Power, MapPin, ArrowRight, Users, Check, Sparkles, CalendarClock } from "lucide-react";
+import { Loader2, Power, MapPin, ArrowRight, Users, Check, Sparkles, CalendarClock, AlertTriangle } from "lucide-react";
 import { useModal } from "@/components/ui/ModalProvider";
 import { TripReminder } from "@/components/ui/TripReminder";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,7 @@ export default function DriverHomePage() {
   const [requests, setRequests] = useState<Ride[]>([]);
   const [myBids, setMyBids] = useState<Map<string, { offerId: string; amount: number }>>(new Map());
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
+  const [lowBalance, setLowBalance] = useState<LowBalanceCheck | null>(null);
   const [expandedScheduleId, setExpandedScheduleId] = useState<string | null>(null);
   const [matchingId, setMatchingId] = useState<string | null>(null);
   const [stopCounts, setStopCounts] = useState<Record<string, number>>({});
@@ -70,6 +72,7 @@ export default function DriverHomePage() {
         .limit(1)
         .maybeSingle();
       setHasActiveSubscription(!!sub);
+      setLowBalance(await checkLowBalance(supabase, uid, Number(data?.prepaid_wallet_balance) || 0));
     },
     [supabase]
   );
@@ -272,6 +275,17 @@ export default function DriverHomePage() {
   return (
     <div className="space-y-5">
       <TripReminder role="driver" />
+
+      {lowBalance?.isLow && (
+        <Link href="/driver/wallet" className="card p-4 flex items-center gap-2.5 bg-gold-50 border-gold-200 block">
+          <AlertTriangle className="w-4 h-4 text-gold-600 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gold-700">Your wallet balance is getting low</p>
+            <p className="text-xs text-navy-500">Tap to top up before it runs out.</p>
+          </div>
+          <ArrowRight className="w-4 h-4 text-gold-600 shrink-0" />
+        </Link>
+      )}
 
       {activeRide && (
         <Link href={`/driver/rides/${activeRide.id}`} className="card p-4 flex items-center justify-between bg-navy-800 text-paper block">
