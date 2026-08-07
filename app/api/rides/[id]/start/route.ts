@@ -63,6 +63,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
   }
 
+  // This is what Admin → Transactions actually reads from — previously
+  // only ever written at ride completion, which meant admin had no
+  // visibility into a commission charge until long after it actually
+  // happened (the driver's own wallet already reflected it correctly at
+  // this point). Written once, here, at the moment the charge is real;
+  // the completion route no longer writes a second one for the same ride.
+  await admin.from("transactions").insert({
+    ride_id: rideId,
+    driver_id: ride.driver_id,
+    rider_id: ride.rider_id,
+    type: "ride_commission",
+    amount: fare,
+    commission_pct: resolved.pct,
+    commission_amount: resolved.amount,
+    currency: ride.currency,
+    gateway: "ride",
+    status: "success",
+  });
+
   const { error } = await admin
     .from("rides")
     .update({

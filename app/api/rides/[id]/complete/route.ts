@@ -389,18 +389,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .eq("id", rideId);
   if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });
 
-  await admin.from("transactions").insert({
-    ride_id: rideId,
-    driver_id: ride.driver_id,
-    rider_id: ride.rider_id,
-    type: "ride_commission",
-    amount: fare,
-    commission_pct: pct,
-    commission_amount: commission,
-    currency: ride.currency,
-    gateway: "ride",
-    status: "success",
-  });
+  // Note: the admin-facing transaction record for this ride's commission
+  // is created at trip-start now (/api/rides/[id]/start), not here — that's
+  // the moment the charge actually happens. Creating a second one here
+  // would duplicate it for every ride.
 
   const driverUpdate: Record<string, any> = {
     total_earnings: (driverProfile?.total_earnings || 0) + driverTakeHome,
