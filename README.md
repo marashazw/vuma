@@ -226,12 +226,39 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   affecting both fare guidance and commission the same way the Vuma Deluxe multiplier does —
   the two **stack** rather than override each other, so a scheduled Deluxe ride reflects
   both factors combined.
-- **A driver can only have one active trip at a time** — if a driver accepts a new ride while
-  another is still `in_progress`, that new ride's screen stays gated (no map, no fare, no
-  Start button — just a clear "finish your current trip first" prompt with a direct link to
-  it) until the current trip is completed. Enforced server-side in the trip-start route
-  itself, not just as a UI suggestion — a request to start a second trip while one is already
-  in progress is rejected regardless of how it's made.
+- **A driver can only have one active immediate trip at a time** — if a driver accepts a new
+  ride while another is still `in_progress`, that new ride's screen stays gated (no map, no
+  fare, no Start button — just a clear "finish your current trip first" prompt with a direct
+  link to it) until the current trip is completed. Enforced server-side in the trip-start
+  route itself, not just as a UI suggestion. **Scheduled rides are exempt from this viewing
+  gate** — since they're for a future time regardless, there's no real conflict in a driver
+  viewing or preparing for one while another trip is currently underway; the actual
+  trip-start block still applies at the real moment of starting, for genuine physical
+  double-booking safety.
+- **Scheduled-ride messaging reflects the actual situation** — the rider's "Arriving in X
+  min" countdown (which assumes the driver is currently en route) only shows once a scheduled
+  trip's appointment is genuinely imminent (within 45 minutes); well before that, it correctly
+  shows "Driver confirmed for [date/time]" instead, since the driver isn't actually heading
+  there yet for an appointment hours or days away. The driver's "Accepted — let's go!" banner
+  is similarly reworded for a scheduled trip ("Accepted! Set a reminder for this appointment")
+  since "let's go" doesn't fit something that isn't happening yet.
+- **In-app trip reminders** — both rider and driver dashboards show a countdown banner for
+  any accepted scheduled trip within the next 24 hours, with an optional "Set reminder" button
+  that requests browser notification permission and, if granted, fires a local reminder about
+  an hour before. **Honest limitation, stated in the UI itself**: this only fires while the
+  app is actually open (foreground or backgrounded tab) — it is not a true push notification
+  that would wake the device if the app were fully closed, since that needs separate
+  infrastructure (VAPID keys, a service worker push handler, a server-side scheduler) not
+  currently wired up. The in-app dashboard banner is the reliable part regardless of
+  notification permission, since it just reads straight from the database on every visit.
+  **Once the scheduled time actually arrives, the banner switches from a countdown to an
+  arrival-confirmation prompt**, different for each role: a driver is asked "Have you
+  arrived?" — answering yes navigates them straight to the ride so they can tap Start Trip
+  themselves (deliberately not auto-started, since that has real consequences — a wallet
+  deduction, a status change — that shouldn't happen without an explicit tap). A rider is
+  asked "Is your driver here?" — if they say no or don't respond, the prompt escalates after
+  10 minutes into a "Report driver no-show" option, using the exact same 10-minute threshold
+  as the no-show report button on the ride screen itself, so the two stay consistent.
 - **Driver wallet — subscription payment and rider-credit reimbursement** — a driver can now
   pay for a subscription plan directly from their prepaid wallet balance (mirroring the
   existing "pay with credit balance" flow exactly). Separately, when a rider covers part of a
@@ -241,6 +268,14 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   behalf. Wallet top-ups now also require an explicit, timestamped consent confirmation
   ("this deposit will not be refundable and will only be applied towards ride commissions and
   subscriptions") before submission.
+- **Personalized low-balance reminders** — a driver gets a "top up soon" nudge on their
+  dashboard and Wallet page once their balance drops below **30% of whichever is higher: the
+  amount of their last top-up, or their average daily commission usage over the last 30
+  days**. A flat threshold wouldn't serve every driver well — someone who tops up in large,
+  infrequent amounts and someone who tops up little-and-often have genuinely different
+  "getting low" points, so the threshold adapts to each driver's own pattern rather than
+  using one number for everyone. This is a soft, earlier nudge — separate from (and well
+  before) the hard block that already prevents going online at a $0 balance.
 - **Accounting console (Admin → Transactions / Income Statement)** — the Transactions tab is
   now a full filterable console: date range (latest first by default), driver, and
   transaction type — including a breakdown by commission *source* (subscription rate,

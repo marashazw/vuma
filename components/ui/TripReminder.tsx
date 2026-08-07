@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Ride } from "@/lib/types";
-import { CalendarClock, Bell, BellRing } from "lucide-react";
+import { CalendarClock, Bell, BellRing, Check, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
 const REMINDER_WINDOW_MS = 24 * 60 * 60 * 1000; // show upcoming trips within 24h
 const LOCAL_NOTIFY_BEFORE_MS = 60 * 60 * 1000; // fire the local notification 1h before
+const NO_SHOW_REPORT_GRACE_MIN = 10; // matches ScheduledCancelPanel's own threshold
 
 function formatCountdown(ms: number): string {
   if (ms <= 0) return "now";
@@ -20,8 +22,14 @@ function formatCountdown(ms: number): string {
 
 export function TripReminder({ role }: { role: "rider" | "driver" }) {
   const supabase = createClient();
+  const router = useRouter();
   const [upcoming, setUpcoming] = useState<Ride[]>([]);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("default");
+  // Tracks a "not yet" response per ride, purely to switch the copy from a
+  // question to an acknowledgement — this is a local UI state, not written
+  // anywhere, since the only thing that actually matters is the driver's
+  // real Start Trip tap or the rider's real no-show report.
+  const [notYetRideIds, setNotYetRideIds] = useState<Set<string>>(new Set());
   const [, forceTick] = useState(0);
 
   useEffect(() => {
@@ -51,8 +59,8 @@ export function TripReminder({ role }: { role: "rider" | "driver" }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role]);
 
-  // Re-render every minute so the countdown stays current without a
-  // full data refetch.
+  // Re-render every minute so the countdown (and the arrival-prompt
+  // escalation to a no-show report) stays current without a full refetch.
   useEffect(() => {
     const t = setInterval(() => forceTick((n) => n + 1), 60000);
     return () => clearInterval(t);
@@ -89,6 +97,82 @@ export function TripReminder({ role }: { role: "rider" | "driver" }) {
 
   const soonest = upcoming[0];
   const msUntil = new Date(soonest.scheduled_at!).getTime() - Date.now();
+  const isPastScheduledTime = msUntil <= 0;
+  const minutesPast = isPastScheduledTime ? Math.abs(msUntil) / 60000 : 0;
+  const saidNotYet = notYetRideIds.has(soonest.id);
+
+  // Once the scheduled time has actually arrived, the banner switches from
+  // a countdown to an arrival-confirmation prompt — different for each
+  // role, since a rider and driver need different questions answered.
+  if (isPastScheduledTime) {
+    if (role === "driver") {
+      return (
+        <div className="card p-4 bg-navy-800 text-white">
+          <div className="flex items-center gap-2.5 mb-3">
+            <CalendarClock className="w-5 h-5 text-gold-400 shrink-0" />
+            <p className="text-sm font-semibold">Have you arrived at the pickup for {soonest.dropoff_address.split(",")[0]}?</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              className="btn-ghost !text-sm !bg-transparent !text-navy-200 !border-navy-600"
+              onClick={() => setNotYetRideIds((prev) => new Set(prev).add(soonest.id))}
+            >
+              Not yet
+            </button>
+            <button className="btn-primary !text-sm" onClick={() => router.push(`/driver/rides/${soonest.id}`)}>
+              <Check className="w-4 h-4" /> Yes, I'm here
+            </button>
+          </div>
+          {saidNotYet && <p className="text-xs text-navy-300 mt-2">No rush — let us know once you're there.</p>}
+        </div>
+      );
+    }
+
+    // Rider side: ask if the driver has arrived, escalating to a no-show
+    // report option once genuinely past the grace period — matches the
+    // same 10-minute threshold ScheduledCancelPanel itself uses for its
+    // own "report no-show" button, so the two stay consistent.
+    const pastGracePeriod = minutesPast >= NO_SHOW_REPORT_GRACE_MIN;
+    return (
+      <div className="card p-4 bg-navy-800 text-white">
+        <div className="flex items-center gap-2.5 mb-3">
+          {pastGracePeriod ? (
+            <AlertTriangle className="w-5 h-5 text-coral-400 shrink-0" />
+          ) : (
+            <CalendarClock className="w-5 h-5 text-gold-400 shrink-0" />
+          )}
+          <p className="text-sm font-semibold">
+            {pastGracePeriod
+              ? `Your driver hasn't arrived for ${soonest.dropoff_address.split(",")[0]}`
+              : `Is your driver here for ${soonest.dropoff_address.split(",")[0]}?`}
+          </p>
+        </div>
+        {pastGracePeriod ? (
+          <Link href={`/rider/rides/${soonest.id}`} className="btn-danger w-full !text-sm">
+            Report driver no-show
+          </Link>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              className="btn-ghost !text-sm !bg-transparent !text-navy-200 !border-navy-600"
+              onClick={() => setNotYetRideIds((prev) => new Set(prev).add(soonest.id))}
+            >
+              Not yet
+            </button>
+            <Link href={`/rider/rides/${soonest.id}`} className="btn-primary !text-sm text-center">
+              <Check className="w-4 h-4 inline mr-1" /> Yes, they're here
+            </Link>
+          </div>
+        )}
+        {!pastGracePeriod && saidNotYet && (
+          <p className="text-xs text-navy-300 mt-2">
+            If they're still not here in {Math.max(Math.ceil(NO_SHOW_REPORT_GRACE_MIN - minutesPast), 1)} min, you'll be
+            able to report it.
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="card p-4 bg-navy-800 text-white flex items-center justify-between gap-3">
@@ -121,3 +205,4 @@ export function TripReminder({ role }: { role: "rider" | "driver" }) {
     </div>
   );
 }
+

@@ -6,7 +6,7 @@ import type { Ride } from "@/lib/types";
 import { CalendarClock, AlertTriangle, Loader2 } from "lucide-react";
 
 const LOCK_WINDOW_MS = 60 * 60 * 1000;
-const NO_SHOW_GRACE_MS = 15 * 60 * 1000;
+const NO_SHOW_GRACE_MS = 10 * 60 * 1000; // matches TripReminder's own threshold
 
 export function ScheduledCancelPanel({
   ride,
