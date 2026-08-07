@@ -107,11 +107,22 @@ export default function IncomeStatementPage() {
     // --- Outstanding liabilities (current snapshot, not period-bound) ---
 
     // Driver prepaid wallet balances, grouped by their country's currency.
-    const { data: driverProfiles } = await supabase
-      .from("driver_profiles")
-      .select("prepaid_wallet_balance, user_id, profiles!inner(country)");
-    (driverProfiles as any[] | null)?.forEach((d) => {
-      const currency = COUNTRY_CURRENCY[d.profiles?.country] || "ZAR";
+    // Deliberately two separate queries joined in JS, not an embedded
+    // PostgREST relationship — driver_profiles.user_id -> profiles.id
+    // isn't a standard `id`-named FK, and PostgREST's automatic
+    // relationship detection can fail to resolve it silently. With
+    // `!inner` that would drop the row entirely rather than error, which
+    // is exactly what was causing some drivers' wallet balances to go
+    // missing from this report instead of just miscategorized.
+    const { data: driverProfiles } = await supabase.from("driver_profiles").select("prepaid_wallet_balance, user_id");
+    const driverUserIds = (driverProfiles || []).map((d) => d.user_id);
+    const { data: driverProfilePeople } = await supabase
+      .from("profiles")
+      .select("id, country")
+      .in("id", driverUserIds.length ? driverUserIds : ["-"]);
+    (driverProfiles || []).forEach((d) => {
+      const country = driverProfilePeople?.find((p) => p.id === d.user_id)?.country;
+      const currency = COUNTRY_CURRENCY[country || "ZA"] || "ZAR";
       if (byCurrency[currency]) byCurrency[currency].driverWallets += Number(d.prepaid_wallet_balance) || 0;
     });
 
