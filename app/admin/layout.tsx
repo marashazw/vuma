@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { TopBar } from "@/components/ui/TopBar";
 import { AdminTabs } from "./admin-tabs";
+import { AdminSecondaryNav } from "./admin-secondary-nav";
 import { RoleSwitcher } from "@/components/admin/RoleSwitcher";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -20,7 +21,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <TopBar title="Admin" />
       <RoleSwitcher />
       <AdminTabs />
-      <main className="max-w-6xl mx-auto px-5 py-6">{children}</main>
+      <div className="max-w-6xl mx-auto px-5 py-6">
+        <div className="lg:hidden mb-4">
+          <AdminSecondaryNav />
+        </div>
+        <div className="flex gap-6">
+          <main className="flex-1 min-w-0">{children}</main>
+          <aside className="hidden lg:block w-48 shrink-0">
+            <AdminSecondaryNav />
+          </aside>
+        </div>
+      </div>
     </div>
   );
 }
