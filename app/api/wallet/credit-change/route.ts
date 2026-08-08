@@ -36,7 +36,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "This ride isn't in a state where change can be credited" }, { status: 409 });
   }
 
-  const limits = COUNTRIES[ride.country as CountryCode];
+  // Caps are admin-configurable (Admin → Commissions) — fare_settings is
+  // the live source, falling back to the original hardcoded defaults only
+  // if that row is somehow missing (shouldn't happen after migration 032,
+  // but matches the same defensive fallback pattern used for
+  // deluxe_multiplier and scheduled_multiplier elsewhere).
+  const countryDefaults = COUNTRIES[ride.country as CountryCode];
+  const { data: fareSettings } = await admin
+    .from("fare_settings")
+    .select("change_credit_per_rider_monthly, change_credit_driver_monthly")
+    .eq("country", ride.country)
+    .single();
+  const limits = {
+    changeCreditPerRiderMonthly: fareSettings?.change_credit_per_rider_monthly ?? countryDefaults.changeCreditPerRiderMonthly,
+    changeCreditDriverMonthly: fareSettings?.change_credit_driver_monthly ?? countryDefaults.changeCreditDriverMonthly,
+    currencySymbol: countryDefaults.currencySymbol,
+  };
   const monthStart = startOfMonthUTC();
 
   console.log("[credit-change] check", {

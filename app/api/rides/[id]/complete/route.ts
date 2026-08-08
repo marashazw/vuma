@@ -205,7 +205,17 @@ async function processChangeCreditRedemption(
   const applied = Number(ride.wallet_applied) || 0;
   if (applied <= 0) return { creditGiven: 0, creditCapped: false };
 
-  const limits = COUNTRIES[ride.country as CountryCode];
+  // Same admin-configurable source as the issuing side (credit-change
+  // route) — keeps the two consistent with whatever the admin currently
+  // has set, rather than the redemption side quietly using a stale
+  // hardcoded value.
+  const countryDefaults = COUNTRIES[ride.country as CountryCode];
+  const { data: fareSettings } = await admin
+    .from("fare_settings")
+    .select("change_credit_driver_monthly")
+    .eq("country", ride.country)
+    .single();
+  const driverMonthlyCap = fareSettings?.change_credit_driver_monthly ?? countryDefaults.changeCreditDriverMonthly;
   const monthStart = startOfMonthUTC();
 
   const { data: redeemedTxns } = await admin
@@ -216,7 +226,7 @@ async function processChangeCreditRedemption(
     .gte("created_at", monthStart);
   const redeemedSoFar = (redeemedTxns || []).reduce((sum, t) => sum + Number(t.amount), 0);
 
-  const room = Math.max(limits.changeCreditDriverMonthly - redeemedSoFar, 0);
+  const room = Math.max(driverMonthlyCap - redeemedSoFar, 0);
   const creditGiven = Math.min(applied, room);
   const creditCapped = creditGiven < applied;
 

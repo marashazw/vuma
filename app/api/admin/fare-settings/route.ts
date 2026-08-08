@@ -12,8 +12,18 @@ export async function PATCH(req: NextRequest) {
   const { data: profile } = await supabase.from("profiles").select("role, is_super_admin").eq("id", user.id).single();
   if (!profile?.is_super_admin) return NextResponse.json({ error: "Admin access required" }, { status: 403 });
 
-  const { country, base_fare, per_km, low_multiplier, high_multiplier, round_to, deluxe_multiplier, scheduled_multiplier } =
-    await req.json();
+  const {
+    country,
+    base_fare,
+    per_km,
+    low_multiplier,
+    high_multiplier,
+    round_to,
+    deluxe_multiplier,
+    scheduled_multiplier,
+    change_credit_per_rider_monthly,
+    change_credit_driver_monthly,
+  } = await req.json();
   const admin = createAdminClient();
 
   console.log("[fare-settings] PATCH request:", {
@@ -25,6 +35,8 @@ export async function PATCH(req: NextRequest) {
     round_to,
     deluxe_multiplier,
     scheduled_multiplier,
+    change_credit_per_rider_monthly,
+    change_credit_driver_monthly,
   });
 
   const { data: updatedRows, error } = await admin
@@ -37,6 +49,8 @@ export async function PATCH(req: NextRequest) {
       round_to,
       deluxe_multiplier,
       scheduled_multiplier,
+      change_credit_per_rider_monthly,
+      change_credit_driver_monthly,
       updated_by: user.id,
       updated_at: new Date().toISOString(),
     })

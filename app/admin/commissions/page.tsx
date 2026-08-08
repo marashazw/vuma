@@ -12,6 +12,7 @@ export default function AdminCommissionsPage() {
   const supabase = createClient();
   const [rates, setRates] = useState<Record<string, number>>({});
   const [fareSettings, setFareSettings] = useState<Record<string, FareSettings>>({});
+  const [originalFareSettings, setOriginalFareSettings] = useState<Record<string, FareSettings>>({});
   const [loading, setLoading] = useState(true);
   const [savingCountry, setSavingCountry] = useState<string | null>(null);
   const [savingFareCountry, setSavingFareCountry] = useState<string | null>(null);
@@ -27,6 +28,7 @@ export default function AdminCommissionsPage() {
       const fareMap: Record<string, FareSettings> = {};
       (fareData || []).forEach((f) => (fareMap[f.country] = f as FareSettings));
       setFareSettings(fareMap);
+      setOriginalFareSettings(fareMap);
 
       setLoading(false);
     })();
@@ -45,6 +47,28 @@ export default function AdminCommissionsPage() {
 
   async function saveFareSettings(country: CountryCode) {
     const f = fareSettings[country];
+
+    // The caps exist specifically to bound the maximum possible damage
+    // from abuse or a future bug, independent of whether an individual
+    // driver's balance is technically valid — see the persistent warning
+    // rendered near these fields for the full reasoning. Loosening either
+    // one is a deliberate reduction in that safety margin, so it gets an
+    // explicit, restated confirmation rather than blending in with an
+    // ordinary save.
+    const prev = originalFareSettings[country];
+    const increasedPerRider =
+      prev && Number(f.change_credit_per_rider_monthly) > Number(prev.change_credit_per_rider_monthly);
+    const increasedDriverCap =
+      prev && Number(f.change_credit_driver_monthly) > Number(prev.change_credit_driver_monthly);
+
+    if (increasedPerRider || increasedDriverCap) {
+      const ok = await modal.confirm(
+        `You're increasing the change-credit limit for ${COUNTRIES[country].label}. These caps exist as a deliberate fraud/abuse safeguard — they bound how much value can move through the change-credit system regardless of whether a driver's balance is technically valid, and they limit the maximum possible damage if any future bug or edge case is ever found. Raising them increases that exposure. Continue?`,
+        { confirmLabel: "Yes, increase it", danger: true }
+      );
+      if (!ok) return;
+    }
+
     setSavingFareCountry(country);
     const res = await fetch("/api/admin/fare-settings", {
       method: "PATCH",
@@ -58,6 +82,8 @@ export default function AdminCommissionsPage() {
         round_to: f.round_to,
         deluxe_multiplier: f.deluxe_multiplier,
         scheduled_multiplier: f.scheduled_multiplier,
+        change_credit_per_rider_monthly: f.change_credit_per_rider_monthly,
+        change_credit_driver_monthly: f.change_credit_driver_monthly,
       }),
     });
 
@@ -77,6 +103,7 @@ export default function AdminCommissionsPage() {
       console.error("[saveFareSettings] saved, but could not re-fetch to confirm:", fetchErr);
     } else if (fresh) {
       setFareSettings((prev) => ({ ...prev, [country]: fresh as FareSettings }));
+      setOriginalFareSettings((prev) => ({ ...prev, [country]: fresh as FareSettings }));
     }
     setSavingFareCountry(null);
   }
@@ -255,6 +282,54 @@ export default function AdminCommissionsPage() {
                   </span>{" "}
                   and {(f.deluxe_multiplier * f.scheduled_multiplier).toFixed(2)}× commission
                 </p>
+
+                <div className="border-t border-navy-100 pt-4">
+                  <p className="label mb-2">Change-credit monthly caps</p>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <label className="label block mb-1">Max to one rider/month</label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="0"
+                        className="input !py-2"
+                        value={f.change_credit_per_rider_monthly ?? ""}
+                        onChange={(e) =>
+                          setFareSettings((prev) => ({
+                            ...prev,
+                            [c]: { ...f, change_credit_per_rider_monthly: Number(e.target.value) },
+                          }))
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="label block mb-1">Max total/month, any rider</label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="0"
+                        className="input !py-2"
+                        value={f.change_credit_driver_monthly ?? ""}
+                        onChange={(e) =>
+                          setFareSettings((prev) => ({
+                            ...prev,
+                            [c]: { ...f, change_credit_driver_monthly: Number(e.target.value) },
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="bg-coral-500/5 border border-coral-500/20 rounded-lg px-3 py-2.5">
+                    <p className="text-xs text-coral-700">
+                      <strong>Before raising either limit:</strong> these caps aren't about whether a driver's
+                      balance is technically valid — they bound how much value can move through the change-credit
+                      system even when it is. They're the backstop that limits maximum possible damage if a future
+                      bug or an abuse pattern is ever found, independent of any other safeguard already in place.
+                      Raising them is a deliberate reduction in that safety margin, not a routine adjustment.
+                    </p>
+                  </div>
+                </div>
+
                 <button
                   className="btn-dark !py-2"
                   disabled={savingFareCountry === c}
