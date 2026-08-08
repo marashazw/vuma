@@ -259,15 +259,19 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   asked "Is your driver here?" — if they say no or don't respond, the prompt escalates after
   10 minutes into a "Report driver no-show" option, using the exact same 10-minute threshold
   as the no-show report button on the ride screen itself, so the two stay consistent.
-- **Driver wallet — subscription payment and rider-credit reimbursement** — a driver can now
-  pay for a subscription plan directly from their prepaid wallet balance (mirroring the
-  existing "pay with credit balance" flow exactly). Separately, when a rider covers part of a
-  fare using their own Vuma Wallet (change) credit, the driver receives that much less in
-  actual cash — so that amount is now automatically credited back into the driver's own
-  prepaid wallet at trip completion, since Vuma facilitated that credit on the driver's
-  behalf. Wallet top-ups now also require an explicit, timestamped consent confirmation
-  ("this deposit will not be refundable and will only be applied towards ride commissions and
-  subscriptions") before submission.
+- **Driver wallet — subscription payment via wallet balance** — a driver can pay for a
+  subscription plan directly from their prepaid wallet balance (mirroring the existing "pay
+  with credit balance" flow exactly). Wallet top-ups now also require an explicit,
+  timestamped consent confirmation ("this deposit will not be refundable and will only be
+  applied towards ride commissions and subscriptions") before submission.
+  **Fixed a double-crediting bug**: an earlier version of this feature also credited a
+  driver's prepaid wallet when a rider covered part of a fare with their own Vuma Wallet
+  (change) credit — but that event was already correctly compensated by a pre-existing,
+  separate mechanism (`credit_balance`, capped at a monthly redemption limit) at ride
+  completion. The two together meant a driver was compensated twice for the same shortfall,
+  and the newer, uncapped path silently bypassed the monthly anti-abuse limit the original
+  mechanism was deliberately designed to enforce. Removed the duplicate; the original,
+  capped mechanism is the one place this compensation happens.
 - **Personalized low-balance reminders** — a driver gets a "top up soon" nudge on their
   dashboard and Wallet page once their balance drops below **30% of whichever is higher: the
   amount of their last top-up, or their average daily commission usage over the last 30
