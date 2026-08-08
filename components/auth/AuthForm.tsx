@@ -39,7 +39,7 @@ export function AuthForm({
         id: userId,
         role,
         full_name: fullName || "New user",
-        phone: method === "phone" ? phone : null,
+        phone: method === "phone" || role === "driver" ? phone || null : null,
         email: method === "email" ? email : null,
         country,
         referred_by: referralCode && referralCode !== userId ? referralCode : null,
@@ -119,8 +119,14 @@ export function AuthForm({
 
   async function handleEmail(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+
+    if (mode === "signup" && role === "driver" && !phone.trim()) {
+      setError("A phone number is required to sign up as a driver.");
+      return;
+    }
+
+    setLoading(true);
 
     if (mode === "signup") {
       const { data, error } = await supabase.auth.signUp({ email, password });
@@ -251,6 +257,22 @@ export function AuthForm({
             <label className="label mb-1.5 block">Email</label>
             <input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
+          {mode === "signup" && role === "driver" && (
+            <div>
+              <label className="label mb-1.5 block">Phone number</label>
+              <input
+                className="input"
+                type="tel"
+                required
+                placeholder="+27 82 123 4567"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+              <p className="text-xs text-navy-400 mt-1">
+                Required for drivers — riders need a way to reach you about a trip.
+              </p>
+            </div>
+          )}
           <div>
             <label className="label mb-1.5 block">Password</label>
             <input className="input" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
