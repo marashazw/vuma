@@ -38,21 +38,52 @@ export default function DriverHomePage() {
 
   const loadActiveRide = useCallback(
     async (uid: string) => {
-      const { data } = await supabase
+      // An actually-in-progress trip always wins, regardless of when it
+      // was created relative to anything else — this is what the driver
+      // is doing right now. Checked first and separately from "accepted",
+      // rather than sorting the two together by created_at, which was the
+      // actual bug: a scheduled ride accepted moments ago (for hours from
+      // now) would outrank a trip that's been in progress for the last 20
+      // minutes, simply by being more recently created.
+      const { data: inProgress } = await supabase
         .from("rides")
         .select("*")
         .eq("driver_id", uid)
-        .in("status", ["accepted", "in_progress"])
+        .eq("status", "in_progress")
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      setActiveRide((data as Ride) || null);
 
-      if (data?.status === "accepted" && typeof window !== "undefined") {
-        const key = `vuma-auto-nav-${data.id}`;
+      if (inProgress) {
+        setActiveRide(inProgress as Ride);
+        return;
+      }
+
+      // No in-progress trip — fall back to an accepted, immediate ride
+      // (something the driver genuinely needs to act on now, like heading
+      // to a pickup). Deliberately excludes accepted rides that are
+      // scheduled for later: those aren't "active" in any meaningful
+      // sense yet, and are already surfaced separately via the trip
+      // reminder banner rather than needing to show here too.
+      const { data: acceptedNow } = await supabase
+        .from("rides")
+        .select("*")
+        .eq("driver_id", uid)
+        .eq("status", "accepted")
+        .eq("is_scheduled", false)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setActiveRide((acceptedNow as Ride) || null);
+
+      // Auto-navigate only for an immediate acceptance — a scheduled
+      // acceptance shouldn't yank the driver away from whatever they're
+      // currently doing, since there's nothing to act on yet.
+      if (acceptedNow && typeof window !== "undefined") {
+        const key = `vuma-auto-nav-${acceptedNow.id}`;
         if (!sessionStorage.getItem(key)) {
           sessionStorage.setItem(key, "1");
-          router.push(`/driver/rides/${data.id}?justAccepted=1`);
+          router.push(`/driver/rides/${acceptedNow.id}?justAccepted=1`);
         }
       }
     },
