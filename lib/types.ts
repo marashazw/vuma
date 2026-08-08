@@ -380,6 +380,7 @@ export interface FareSettings {
   scheduled_multiplier: number;
   change_credit_per_rider_monthly: number | null;
   change_credit_driver_monthly: number | null;
+  rider_wallet_accrual_monthly: number | null;
   currency: string;
   updated_by: string | null;
   updated_at: string;

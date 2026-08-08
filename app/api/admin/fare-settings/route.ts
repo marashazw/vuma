@@ -23,6 +23,7 @@ export async function PATCH(req: NextRequest) {
     scheduled_multiplier,
     change_credit_per_rider_monthly,
     change_credit_driver_monthly,
+    rider_wallet_accrual_monthly,
   } = await req.json();
   const admin = createAdminClient();
 
@@ -37,6 +38,7 @@ export async function PATCH(req: NextRequest) {
     scheduled_multiplier,
     change_credit_per_rider_monthly,
     change_credit_driver_monthly,
+    rider_wallet_accrual_monthly,
   });
 
   const { data: updatedRows, error } = await admin
@@ -51,6 +53,7 @@ export async function PATCH(req: NextRequest) {
       scheduled_multiplier,
       change_credit_per_rider_monthly,
       change_credit_driver_monthly,
+      rider_wallet_accrual_monthly,
       updated_by: user.id,
       updated_at: new Date().toISOString(),
     })

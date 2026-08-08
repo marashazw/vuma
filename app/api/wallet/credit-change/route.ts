@@ -44,12 +44,13 @@ export async function POST(req: NextRequest) {
   const countryDefaults = COUNTRIES[ride.country as CountryCode];
   const { data: fareSettings } = await admin
     .from("fare_settings")
-    .select("change_credit_per_rider_monthly, change_credit_driver_monthly")
+    .select("change_credit_per_rider_monthly, change_credit_driver_monthly, rider_wallet_accrual_monthly")
     .eq("country", ride.country)
     .single();
   const limits = {
     changeCreditPerRiderMonthly: fareSettings?.change_credit_per_rider_monthly ?? countryDefaults.changeCreditPerRiderMonthly,
     changeCreditDriverMonthly: fareSettings?.change_credit_driver_monthly ?? countryDefaults.changeCreditDriverMonthly,
+    riderWalletAccrualMonthly: fareSettings?.rider_wallet_accrual_monthly ?? countryDefaults.riderWalletAccrualMonthly,
     currencySymbol: countryDefaults.currencySymbol,
   };
   const monthStart = startOfMonthUTC();
@@ -62,8 +63,41 @@ export async function POST(req: NextRequest) {
     creditAmount,
     perRiderCap: limits.changeCreditPerRiderMonthly,
     driverCap: limits.changeCreditDriverMonthly,
+    riderAccrualCap: limits.riderWalletAccrualMonthly,
     monthStart,
   });
+
+  // Rider-level monthly accrual cap — how much this rider can receive in
+  // total, from *any* drivers combined, this month. Deliberately not
+  // scoped to driver_id, unlike the two checks below: the whole point of
+  // this check is to catch what the other two structurally can't — a
+  // rider receiving credit from several different drivers, each
+  // correctly staying within their own individual limits.
+  const { data: riderTotalTxns, error: riderTotalErr } = await admin
+    .from("driver_credit_transactions")
+    .select("amount")
+    .eq("rider_id", ride.rider_id)
+    .eq("type", "issued_change_credit")
+    .gte("created_at", monthStart);
+
+  if (riderTotalErr) {
+    console.error("[credit-change] FAILED to read this rider's total accrual across all drivers:", riderTotalErr);
+  }
+  const riderAccruedTotal = (riderTotalTxns || []).reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0);
+  console.log("[credit-change] riderAccruedTotal (all drivers) so far:", riderAccruedTotal);
+
+  if (riderAccruedTotal + creditAmount > limits.riderWalletAccrualMonthly) {
+    const remaining = Math.max(limits.riderWalletAccrualMonthly - riderAccruedTotal, 0);
+    return NextResponse.json(
+      {
+        error:
+          remaining > 0
+            ? `This rider has already received ${limits.currencySymbol}${riderAccruedTotal.toFixed(2)} in wallet credit this month (from any driver) — you can add up to ${limits.currencySymbol}${remaining.toFixed(2)} more before they hit their monthly limit.`
+            : `This rider has reached their ${limits.currencySymbol}${limits.riderWalletAccrualMonthly}/month wallet credit limit across all drivers — they'll be able to receive more next month.`,
+      },
+      { status: 400 }
+    );
+  }
 
   // Per-rider monthly cap check
   const { data: riderTxns, error: riderTxnsErr } = await admin

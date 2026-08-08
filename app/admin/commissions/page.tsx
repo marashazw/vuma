@@ -60,10 +60,12 @@ export default function AdminCommissionsPage() {
       prev && Number(f.change_credit_per_rider_monthly) > Number(prev.change_credit_per_rider_monthly);
     const increasedDriverCap =
       prev && Number(f.change_credit_driver_monthly) > Number(prev.change_credit_driver_monthly);
+    const increasedRiderAccrual =
+      prev && Number(f.rider_wallet_accrual_monthly) > Number(prev.rider_wallet_accrual_monthly);
 
-    if (increasedPerRider || increasedDriverCap) {
+    if (increasedPerRider || increasedDriverCap || increasedRiderAccrual) {
       const ok = await modal.confirm(
-        `You're increasing the change-credit limit for ${COUNTRIES[country].label}. These caps exist as a deliberate fraud/abuse safeguard — they bound how much value can move through the change-credit system regardless of whether a driver's balance is technically valid, and they limit the maximum possible damage if any future bug or edge case is ever found. Raising them increases that exposure. Continue?`,
+        `You're increasing a change-credit limit for ${COUNTRIES[country].label}. These caps exist as a deliberate fraud/abuse safeguard — they bound how much value can move through the change-credit system regardless of whether a driver's balance is technically valid, and they limit the maximum possible damage if any future bug or edge case is ever found. Raising them increases that exposure. Continue?`,
         { confirmLabel: "Yes, increase it", danger: true }
       );
       if (!ok) return;
@@ -84,6 +86,7 @@ export default function AdminCommissionsPage() {
         scheduled_multiplier: f.scheduled_multiplier,
         change_credit_per_rider_monthly: f.change_credit_per_rider_monthly,
         change_credit_driver_monthly: f.change_credit_driver_monthly,
+        rider_wallet_accrual_monthly: f.rider_wallet_accrual_monthly,
       }),
     });
 
@@ -285,9 +288,9 @@ export default function AdminCommissionsPage() {
 
                 <div className="border-t border-navy-100 pt-4">
                   <p className="label mb-2">Change-credit monthly caps</p>
-                  <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
                     <div>
-                      <label className="label block mb-1">Max to one rider/month</label>
+                      <label className="label block mb-1">Max to one rider/month (per driver)</label>
                       <input
                         type="number"
                         step="1"
@@ -303,7 +306,7 @@ export default function AdminCommissionsPage() {
                       />
                     </div>
                     <div>
-                      <label className="label block mb-1">Max total/month, any rider</label>
+                      <label className="label block mb-1">Max issued/month, any rider (per driver)</label>
                       <input
                         type="number"
                         step="1"
@@ -318,14 +321,33 @@ export default function AdminCommissionsPage() {
                         }
                       />
                     </div>
+                    <div>
+                      <label className="label block mb-1">Max one rider can accrue/month (any driver)</label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="0"
+                        className="input !py-2"
+                        value={f.rider_wallet_accrual_monthly ?? ""}
+                        onChange={(e) =>
+                          setFareSettings((prev) => ({
+                            ...prev,
+                            [c]: { ...f, rider_wallet_accrual_monthly: Number(e.target.value) },
+                          }))
+                        }
+                      />
+                    </div>
                   </div>
                   <div className="bg-coral-500/5 border border-coral-500/20 rounded-lg px-3 py-2.5">
                     <p className="text-xs text-coral-700">
-                      <strong>Before raising either limit:</strong> these caps aren't about whether a driver's
+                      <strong>Before raising any of these:</strong> the first two bound what one driver can do; the
+                      third closes the gap those two can't — a rider receiving credit from several different
+                      drivers, each correctly staying within their own limit, while the rider's total accumulates
+                      well past what any single driver-scoped cap implies. None of these are about whether a
                       balance is technically valid — they bound how much value can move through the change-credit
-                      system even when it is. They're the backstop that limits maximum possible damage if a future
-                      bug or an abuse pattern is ever found, independent of any other safeguard already in place.
-                      Raising them is a deliberate reduction in that safety margin, not a routine adjustment.
+                      system even when it is, and limit the maximum possible damage if a future bug or abuse
+                      pattern is ever found. Raising any of them is a deliberate reduction in that safety margin,
+                      not a routine adjustment.
                     </p>
                   </div>
                 </div>

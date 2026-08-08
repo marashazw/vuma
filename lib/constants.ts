@@ -15,6 +15,7 @@ export const COUNTRIES: Record<
     fareSteps: number[]; // small, medium, large adjustment increments in this currency
     changeCreditPerRiderMonthly: number; // max a driver can credit one rider per month
     changeCreditDriverMonthly: number; // max a driver can issue OR redeem in total per month
+    riderWalletAccrualMonthly: number; // max a rider can accrue in total, from any drivers combined, per month
     priorityBoostPerDay: number; // credit_balance cost to buy one day of priority ranking
   }
 > = {
@@ -29,6 +30,7 @@ export const COUNTRIES: Record<
     fareSteps: [5, 10, 20],
     changeCreditPerRiderMonthly: 20,
     changeCreditDriverMonthly: 50,
+    riderWalletAccrualMonthly: 40,
     priorityBoostPerDay: 10,
   },
   ZW: {
@@ -42,6 +44,7 @@ export const COUNTRIES: Record<
     fareSteps: [0.5, 1],
     changeCreditPerRiderMonthly: 2,
     changeCreditDriverMonthly: 5,
+    riderWalletAccrualMonthly: 4,
     priorityBoostPerDay: 1,
   },
   OTHER: {
@@ -55,6 +58,7 @@ export const COUNTRIES: Record<
     fareSteps: [0.5, 1],
     changeCreditPerRiderMonthly: 2,
     changeCreditDriverMonthly: 5,
+    riderWalletAccrualMonthly: 4,
     priorityBoostPerDay: 1,
   },
 };
