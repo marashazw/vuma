@@ -26,7 +26,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <AdminSecondaryNav />
         </div>
         <div className="flex gap-6">
-          <aside className="hidden lg:block w-48 shrink-0 border-r border-navy-100 pr-6">
+          <aside className="hidden lg:block w-32 shrink-0 border-r border-navy-100 pr-4">
             <AdminSecondaryNav />
           </aside>
           <main className="flex-1 min-w-0">{children}</main>
