@@ -59,10 +59,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { data: driverProfile } = await admin
     .from("driver_profiles")
-    .select("prepaid_wallet_balance")
+    .select("prepaid_wallet_balance, reserved_balance")
     .eq("user_id", user.id)
     .single();
-  const currentBalance = Number(driverProfile?.prepaid_wallet_balance || 0);
+  const currentBalance = Number(driverProfile?.prepaid_wallet_balance || 0) - Number(driverProfile?.reserved_balance || 0);
   const resultingBalance = Math.round((currentBalance - resolved.amount) * 100) / 100;
   const grace = GRACE_DRAWDOWN[ride.currency] ?? 0.1;
   const canBid = resultingBalance >= -grace;

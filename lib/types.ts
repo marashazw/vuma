@@ -62,6 +62,7 @@ export interface DriverProfile {
   free_ride_credits: number;
   credit_balance: number;
   prepaid_wallet_balance: number;
+  reserved_balance: number;
   badges: string[];
   duplicate_vehicle_flag: boolean;
   duplicate_vehicle_matches_user_id: string | null;
@@ -131,6 +132,7 @@ export interface Ride {
   scheduled_cancel_proposed_by: string | null;
   scheduled_cancel_reason: string | null;
   no_show_penalty_charged: boolean;
+  commission_reserved: number | null;
   driver_name_snapshot: string | null;
   vehicle_snapshot: string | null;
   plate_snapshot: string | null;

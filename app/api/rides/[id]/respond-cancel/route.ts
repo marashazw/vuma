@@ -15,7 +15,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const admin = createAdminClient();
   const { data: ride } = await admin
     .from("rides")
-    .select("rider_id, driver_id, status, scheduled_cancel_status, scheduled_cancel_proposed_by, applied_credit_id, wallet_applied, currency")
+    .select(
+      "rider_id, driver_id, status, scheduled_cancel_status, scheduled_cancel_proposed_by, applied_credit_id, wallet_applied, currency, commission_reserved"
+    )
     .eq("id", id)
     .single();
   if (!ride) return NextResponse.json({ error: "Ride not found" }, { status: 404 });
@@ -46,6 +48,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       scheduled_cancel_status: "accepted",
     })
     .eq("id", id);
+
+  if (ride.commission_reserved && ride.driver_id) {
+    const { data: driverProfile } = await admin
+      .from("driver_profiles")
+      .select("reserved_balance")
+      .eq("user_id", ride.driver_id)
+      .single();
+    const newReserved = Math.max(Number(driverProfile?.reserved_balance || 0) - Number(ride.commission_reserved), 0);
+    await admin.from("driver_profiles").update({ reserved_balance: newReserved }).eq("user_id", ride.driver_id);
+  }
 
   if (ride.applied_credit_id) {
     await admin.from("ride_credits").update({ status: "available", used_ride_id: null }).eq("id", ride.applied_credit_id);

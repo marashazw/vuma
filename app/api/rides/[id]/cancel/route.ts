@@ -18,7 +18,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { data: ride } = await supabase
     .from("rides")
-    .select("rider_id, driver_id, status, applied_credit_id, wallet_applied, currency, is_scheduled, scheduled_at, no_show_penalty_charged")
+    .select(
+      "rider_id, driver_id, status, applied_credit_id, wallet_applied, currency, is_scheduled, scheduled_at, no_show_penalty_charged, commission_reserved"
+    )
     .eq("id", id)
     .single();
   if (!ride) return NextResponse.json({ error: "Ride not found" }, { status: 404 });
@@ -89,6 +91,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .eq("id", id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // A reservation held against this ride (see accept-offer) never
+  // becomes a real deduction now — release it back to the driver's
+  // available balance.
+  if (ride.commission_reserved && ride.driver_id) {
+    const { data: driverProfile } = await admin
+      .from("driver_profiles")
+      .select("reserved_balance")
+      .eq("user_id", ride.driver_id)
+      .single();
+    const newReserved = Math.max(Number(driverProfile?.reserved_balance || 0) - Number(ride.commission_reserved), 0);
+    await admin.from("driver_profiles").update({ reserved_balance: newReserved }).eq("user_id", ride.driver_id);
+  }
 
   if (ride.applied_credit_id) {
     await admin.from("ride_credits").update({ status: "available", used_ride_id: null }).eq("id", ride.applied_credit_id);

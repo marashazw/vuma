@@ -17,6 +17,7 @@ export default function DriverWalletPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [country, setCountry] = useState<CountryCode>("ZA");
   const [balance, setBalance] = useState(0);
+  const [reservedBalance, setReservedBalance] = useState(0);
   const [lowBalance, setLowBalance] = useState<LowBalanceCheck | null>(null);
   const [transactions, setTransactions] = useState<DriverWalletTransaction[]>([]);
   const [pendingTopups, setPendingTopups] = useState<DriverWalletTopup[]>([]);
@@ -40,12 +41,14 @@ export default function DriverWalletPage() {
 
     const { data: driverProfile } = await supabase
       .from("driver_profiles")
-      .select("prepaid_wallet_balance")
+      .select("prepaid_wallet_balance, reserved_balance")
       .eq("user_id", user.id)
       .single();
     const currentBalance = Number(driverProfile?.prepaid_wallet_balance) || 0;
+    const currentReserved = Number(driverProfile?.reserved_balance) || 0;
     setBalance(currentBalance);
-    setLowBalance(await checkLowBalance(supabase, user.id, currentBalance));
+    setReservedBalance(currentReserved);
+    setLowBalance(await checkLowBalance(supabase, user.id, currentBalance - currentReserved));
 
     const { data: txData } = await supabase
       .from("driver_wallet_transactions")
@@ -138,6 +141,12 @@ export default function DriverWalletPage() {
           <Wallet className="w-3.5 h-3.5" /> Prepaid balance
         </p>
         <p className="fare-figure text-4xl font-bold text-white">{currencyFormat(balance, cfg.currency)}</p>
+        {reservedBalance > 0 && (
+          <p className="text-xs text-gold-400 mt-2">
+            {currencyFormat(reservedBalance, cfg.currency)} held for upcoming scheduled trips — available now:{" "}
+            <span className="font-semibold">{currencyFormat(balance - reservedBalance, cfg.currency)}</span>
+          </p>
+        )}
         <p className="text-xs text-navy-300 mt-2">
           Commission is deducted from this balance automatically when you start a trip. Keep it topped up to stay
           online — unless you're on an active subscription plan.
@@ -148,10 +157,13 @@ export default function DriverWalletPage() {
         <div className="card p-4 flex items-start gap-2.5 bg-gold-50 border-gold-200">
           <AlertTriangle className="w-4 h-4 text-gold-600 mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-gold-700">Your balance is getting low</p>
+            <p className="text-sm font-semibold text-gold-700">
+              {balance - reservedBalance <= 0 ? "You have no credit — top up to take new trips" : "Your balance is getting low"}
+            </p>
             <p className="text-xs text-navy-500 mt-0.5">
-              Based on your usual top-up size and how much you typically spend per day, it's worth topping up soon
-              to avoid running out mid-shift.
+              {balance - reservedBalance <= 0
+                ? "You won't be able to go online or bid on new trips until you top up."
+                : "Based on your usual top-up size and how much you typically spend per day, it's worth topping up soon to avoid running out mid-shift."}
             </p>
           </div>
         </div>

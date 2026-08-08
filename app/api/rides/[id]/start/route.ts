@@ -66,14 +66,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // balance that dipped between acceptance and departure.
   const { data: driverProfile } = await admin
     .from("driver_profiles")
-    .select("prepaid_wallet_balance")
+    .select("prepaid_wallet_balance, reserved_balance")
     .eq("user_id", ride.driver_id)
     .single();
   const balanceBefore = Number(driverProfile?.prepaid_wallet_balance || 0);
   const balanceAfter = Math.round((balanceBefore - resolved.amount) * 100) / 100;
 
+  // If this was a scheduled ride, its expected commission was reserved at
+  // acceptance to protect against the balance being spent elsewhere in
+  // the meantime. That reservation's job ends here regardless of what the
+  // freshly-resolved commission turns out to be — even if it comes back
+  // as $0 (say, a referral credit got applied since acceptance), the
+  // reservation still needs releasing, so this is computed and written
+  // unconditionally rather than nested inside the deduction branch below.
+  const newReserved = ride.commission_reserved
+    ? Math.max(Number(driverProfile?.reserved_balance || 0) - Number(ride.commission_reserved), 0)
+    : Number(driverProfile?.reserved_balance || 0);
+
   if (resolved.amount > 0) {
-    await admin.from("driver_profiles").update({ prepaid_wallet_balance: balanceAfter }).eq("user_id", ride.driver_id);
+    await admin
+      .from("driver_profiles")
+      .update({ prepaid_wallet_balance: balanceAfter, reserved_balance: newReserved })
+      .eq("user_id", ride.driver_id);
     await admin.from("driver_wallet_transactions").insert({
       driver_id: ride.driver_id,
       ride_id: ride.id,
@@ -82,6 +96,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       balance_after: balanceAfter,
       notes: `Commission (${resolved.pct.toFixed(1)}%, ${resolved.source}) on ${ride.currency} ${fare.toFixed(2)} fare`,
     });
+  } else if (ride.commission_reserved) {
+    // No commission owed after all, but a reservation still needs releasing.
+    await admin.from("driver_profiles").update({ reserved_balance: newReserved }).eq("user_id", ride.driver_id);
   }
 
   // This is what Admin → Transactions actually reads from — previously

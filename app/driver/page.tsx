@@ -104,7 +104,8 @@ export default function DriverHomePage() {
         .limit(1)
         .maybeSingle();
       setHasActiveSubscription(!!sub);
-      setLowBalance(await checkLowBalance(supabase, uid, Number(data?.prepaid_wallet_balance) || 0));
+      const availableForLowBalanceCheck = (Number(data?.prepaid_wallet_balance) || 0) - (Number(data?.reserved_balance) || 0);
+      setLowBalance(await checkLowBalance(supabase, uid, availableForLowBalanceCheck));
 
       const { data: profile } = await supabase.from("profiles").select("country").eq("id", uid).single();
       setRemainingCreditRoom(await getRemainingChangeCreditRoom(supabase, uid, (profile?.country as CountryCode) || "ZA"));
@@ -219,7 +220,8 @@ export default function DriverHomePage() {
     if (isSuspended) return;
     const next = !driverProfile.is_online;
 
-    if (next && !hasActiveSubscription && Number(driverProfile.prepaid_wallet_balance) <= 0) {
+    const availableBalance = Number(driverProfile.prepaid_wallet_balance) - Number(driverProfile.reserved_balance || 0);
+    if (next && !hasActiveSubscription && availableBalance <= 0) {
       await modal.alert(
         "Your prepaid wallet is empty. Top up your wallet, or switch to a subscription plan, before going online."
       );
@@ -327,7 +329,11 @@ export default function DriverHomePage() {
         <Link href="/driver/wallet" className="card p-4 flex items-center gap-2.5 bg-gold-50 border-gold-200 block">
           <AlertTriangle className="w-4 h-4 text-gold-600 shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gold-700">Your wallet balance is getting low</p>
+            <p className="text-sm font-semibold text-gold-700">
+              {Number(driverProfile?.prepaid_wallet_balance) - Number(driverProfile?.reserved_balance || 0) <= 0
+                ? "You have no credit — top up to take new trips"
+                : "Your wallet balance is getting low"}
+            </p>
             <p className="text-xs text-navy-500">Tap to top up before it runs out.</p>
           </div>
           <ArrowRight className="w-4 h-4 text-gold-600 shrink-0" />

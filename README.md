@@ -826,6 +826,24 @@ simplified and should be hardened before handling real money and real users at s
   the estimate made here. Applies identically to scheduled trips, since bid submission is the
   same function regardless — no separate logic needed. Drivers on an active subscription are
   exempt, matching the same exemption already used elsewhere.
+- **Commission reserved at acceptance for scheduled trips** — closes a real gap the
+  affordability check above didn't cover on its own: a scheduled trip can sit accepted for
+  hours or days before its actual scheduled time, and nothing previously stopped the balance
+  being spent down on unrelated trips in the meantime — a driver could pass the
+  bid-affordability check today and still have nothing left when the scheduled trip's moment
+  actually arrives. Fixed by reserving the expected commission the moment a scheduled ride is
+  accepted (`driver_profiles.reserved_balance`), holding it out of the driver's *available*
+  balance — every gate that checks affordability (going online, bidding, the low-balance
+  reminder) now checks `prepaid_wallet_balance - reserved_balance`, not the raw figure alone.
+  The reservation converts into the real deduction at trip-start, or releases back if the
+  ride is cancelled before then (either party cancelling directly, or a mutually agreed
+  cancellation) — never lost, never double-counted. The Wallet page shows both figures when a
+  reservation exists: the raw balance, and what's actually available right now.
+- **Low-balance messaging now distinguishes "getting low" from "already empty."** Previously
+  both showed the same "getting low" wording regardless of severity. At zero or below, the
+  message now reads "You have no credit — top up to take new trips" instead, on both the
+  driver dashboard and the Wallet page — using the same available-balance figure (net of any
+  reservation) as everything else in this section, not the raw balance.
 
 ## Publishing to Google Play Store
 
