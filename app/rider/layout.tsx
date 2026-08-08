@@ -17,7 +17,7 @@ export default async function RiderLayout({ children }: { children: React.ReactN
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, is_super_admin, suspended_until")
+    .select("role, is_super_admin, suspended_until, suspension_reason")
     .eq("id", user.id)
     .single();
 
@@ -25,7 +25,7 @@ export default async function RiderLayout({ children }: { children: React.ReactN
   if (profile?.role === "admin") redirect("/admin");
 
   if (profile?.suspended_until && new Date(profile.suspended_until) > new Date()) {
-    return <SuspendedScreen role="rider" suspendedUntil={profile.suspended_until} />;
+    return <SuspendedScreen role="rider" suspendedUntil={profile.suspended_until} reason={profile.suspension_reason} />;
   }
 
   return (

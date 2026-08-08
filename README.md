@@ -326,6 +326,33 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   (default R40 / $4, admin-configurable, same "confirm before raising" treatment as the
   other two). Checked against the sum across *all* drivers' `issued_change_credit`
   transactions for that rider, not scoped to whoever's currently issuing.
+- **Fraud & Suspicious Activity console** (Admin → Fraud) — a read-only reporting view, never
+  automated action, surfacing patterns worth a human look: the same driver crediting the same
+  rider's wallet across 2+ different months (occasional change shortages are normal, a
+  recurring pairing is a different pattern); drivers or riders repeatedly at or near their
+  monthly change-credit caps in 2+ of the last 3 months; anyone with 3+ rides cancelled after
+  reaching "accepted" status in the last 30 days; scheduled-ride cancellation flags shown from
+  the very first one (not just once someone's about to hit the 2-flag suspension threshold, so
+  admin has earlier visibility); and duplicate-vehicle-plate flags consolidated here alongside
+  everything else rather than only visible buried in the drivers list. Every section explains
+  what it means and why it's shown — the page is explicit that a flag isn't an accusation, just
+  a pattern worth reviewing, since there's often an ordinary explanation.
+- **Basic rider lookup** (Admin → Riders) — previously there was no way to look up a rider at
+  all beyond their name showing up in lists elsewhere; the fraud console's rider-side flags
+  had nowhere to link to. Now a simple search (name, phone, email) leads to a detail page
+  showing wallet balance, available referral credit, scheduled-ride strikes, every change
+  credit received (from any driver, not just one), and recent trip history with a
+  cancellation count — everything relevant to actually investigating one of the fraud
+  console's flags in one place.
+- **Manual account freeze, for both roles** (on both the driver and the new rider detail
+  page) — previously the only ways an account could become suspended were fully automatic
+  (rating-based, or the scheduled-ride strike system); there was no way for admin to act
+  immediately on something urgent while still investigating. A "Freeze account while
+  investigating" button sets an indefinite hold with a required, specific reason (shown to
+  the account holder, kept on file, logged in the admin audit log) — lifted explicitly via a
+  "Restore access" button once the investigation concludes, never on a timer. Uses the exact
+  same `suspended_until` mechanism the automatic systems already rely on, so it's respected
+  everywhere suspension is already checked, with no new enforcement path to get wrong.
 - **Personalized low-balance reminders** — a driver gets a "top up soon" nudge on their
   dashboard and Wallet page once their balance drops below **30% of whichever is higher: the
   amount of their last top-up, or their average daily commission usage over the last 30
@@ -514,9 +541,13 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
     existing caps are both scoped per-driver, so neither catches a rider receiving credit
     from several different drivers who are each individually staying within their own
     limit — this closes that specific gap.
-35. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
+35. Then run `supabase/migrations/034_rider_suspension_reason.sql` — adds
+    `suspension_reason` to `profiles` (riders), mirroring the field `driver_profiles`
+    already had — needed so a manual admin freeze can carry a specific reason instead of
+    falling back to a generic message.
+36. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
     for both ZA and ZW so the driver subscription page isn't empty).
-36. Go to Project Settings → API and copy:
+37. Go to Project Settings → API and copy:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ keep this secret — never expose it

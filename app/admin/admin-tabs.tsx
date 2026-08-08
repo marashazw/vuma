@@ -7,10 +7,12 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/drivers", label: "Drivers" },
+  { href: "/admin/riders", label: "Riders" },
   { href: "/admin/commissions", label: "Commissions" },
   { href: "/admin/subscriptions", label: "Subscriptions" },
   { href: "/admin/wallet-topups", label: "Wallet Top-ups" },
   { href: "/admin/appeals", label: "Appeals" },
+  { href: "/admin/fraud", label: "Fraud" },
   { href: "/admin/referrals", label: "Referrals" },
   { href: "/admin/safety", label: "Safety" },
   { href: "/admin/moderation", label: "Moderation" },

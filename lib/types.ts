@@ -25,6 +25,8 @@ export interface Profile {
   country: CountryCode;
   avatar_url: string | null;
   is_suspended: boolean;
+  suspended_until: string | null;
+  suspension_reason: string | null;
   scheduled_ride_strikes: number;
   referred_by: string | null;
   wallet_balance: number;

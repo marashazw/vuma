@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { StatusPill } from "@/components/ui/StatusPill";
+import { FreezeControl } from "@/components/admin/FreezeControl";
 import type { DriverProfile, Profile } from "@/lib/types";
 import { Loader2, ArrowLeft, FileText, CheckCircle2, XCircle, Sparkles, UserX } from "lucide-react";
 import { useModal } from "@/components/ui/ModalProvider";
@@ -126,6 +127,14 @@ export default function AdminDriverReviewPage({ params }: { params: Promise<{ id
       {driver.submitted_at && (
         <p className="text-xs text-navy-400">Submitted for review {format(new Date(driver.submitted_at), "d MMM yyyy, HH:mm")}</p>
       )}
+
+      <FreezeControl
+        profileId={id}
+        role="driver"
+        suspendedUntil={driver.suspended_until}
+        suspensionReason={driver.suspension_reason}
+        onUpdate={load}
+      />
 
       {!driver.submitted_at && driver.verification_status !== "verified" && (
         <div className="card p-4 bg-gold-50 border-gold-200 flex items-center justify-between gap-3">

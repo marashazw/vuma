@@ -67,6 +67,8 @@ export function SuspendedScreen({
     window.location.href = "/login";
   }
 
+  const isIndefinite = new Date(suspendedUntil).getFullYear() > new Date().getFullYear() + 5;
+
   return (
     <div className="min-h-screen bg-paper flex items-center justify-center px-5 py-10">
       <div className="max-w-md w-full">
@@ -75,16 +77,24 @@ export function SuspendedScreen({
         </div>
         <div className="card p-6 text-center">
           <ShieldAlert className="w-10 h-10 text-coral-500 mx-auto mb-3" />
-          <h1 className="text-xl font-bold text-navy-800 mb-2">Account temporarily suspended</h1>
+          <h1 className="text-xl font-bold text-navy-800 mb-2">
+            {isIndefinite ? "Account frozen pending review" : "Account temporarily suspended"}
+          </h1>
           <p className="text-sm text-navy-500 mb-1">
             {reason ||
               (role === "rider"
                 ? "This follows a second flag for a late cancellation or no-show on a scheduled ride within a 3-month period."
                 : "Contact support for details on why your account was suspended.")}
           </p>
-          <p className="text-sm font-semibold text-navy-700 flex items-center justify-center gap-1.5 mt-3">
-            <Clock className="w-4 h-4" /> Suspended until {format(new Date(suspendedUntil), "d MMM yyyy, HH:mm")}
-          </p>
+          {isIndefinite ? (
+            <p className="text-sm font-semibold text-navy-700 flex items-center justify-center gap-1.5 mt-3">
+              <Clock className="w-4 h-4" /> Under review — no fixed end date yet
+            </p>
+          ) : (
+            <p className="text-sm font-semibold text-navy-700 flex items-center justify-center gap-1.5 mt-3">
+              <Clock className="w-4 h-4" /> Suspended until {format(new Date(suspendedUntil), "d MMM yyyy, HH:mm")}
+            </p>
+          )}
 
           <div className="border-t border-navy-100 mt-5 pt-5 text-left">
             {checking ? (
