@@ -51,6 +51,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       rider_id: ride.rider_id,
       country: ride.country as CountryCode,
       is_deluxe: ride.is_deluxe,
+      is_scheduled: ride.is_scheduled,
       applied_credit_id: ride.applied_credit_id,
     },
     fare

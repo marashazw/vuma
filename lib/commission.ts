@@ -50,9 +50,17 @@ export function commissionAmount(fare: number, pct: number): number {
  */
 export async function resolveFullCommission(
   admin: any,
-  ride: { id: string; driver_id: string; rider_id: string; country: CountryCode; is_deluxe: boolean; applied_credit_id: string | null },
+  ride: {
+    id: string;
+    driver_id: string;
+    rider_id: string;
+    country: CountryCode;
+    is_deluxe: boolean;
+    is_scheduled: boolean;
+    applied_credit_id: string | null;
+  },
   fare: number
-): Promise<{ pct: number; source: string; amount: number; deluxeMultiplier: number | null }> {
+): Promise<{ pct: number; source: string; amount: number; deluxeMultiplier: number | null; scheduledMultiplier: number | null }> {
   const { data: driverProfile } = await admin.from("driver_profiles").select("*").eq("user_id", ride.driver_id).single();
 
   let pct: number;
@@ -101,13 +109,25 @@ export async function resolveFullCommission(
   }
 
   let deluxeMultiplier: number | null = null;
-  if (ride.is_deluxe) {
-    const { data: fareSettings } = await admin.from("fare_settings").select("deluxe_multiplier").eq("country", ride.country).single();
-    deluxeMultiplier = Number(fareSettings?.deluxe_multiplier) || 1.5;
-    pct = Math.min(pct * deluxeMultiplier, 100);
+  let scheduledMultiplier: number | null = null;
+  if (ride.is_deluxe || ride.is_scheduled) {
+    const { data: fareSettings } = await admin
+      .from("fare_settings")
+      .select("deluxe_multiplier, scheduled_multiplier")
+      .eq("country", ride.country)
+      .single();
+    if (ride.is_deluxe) {
+      deluxeMultiplier = Number(fareSettings?.deluxe_multiplier) || 1.5;
+      pct = pct * deluxeMultiplier;
+    }
+    if (ride.is_scheduled) {
+      scheduledMultiplier = Number(fareSettings?.scheduled_multiplier) || 1.2;
+      pct = pct * scheduledMultiplier;
+    }
+    pct = Math.min(pct, 100);
   }
 
-  return { pct, source, amount: commissionAmount(fare, pct), deluxeMultiplier };
+  return { pct, source, amount: commissionAmount(fare, pct), deluxeMultiplier, scheduledMultiplier };
 }
 
 export function periodDays(period: "weekly" | "monthly" | "once_off"): number {

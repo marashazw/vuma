@@ -225,7 +225,11 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   can also apply a **scheduled-trip fee factor** (Admin → Commissions, "Scheduled ×"),
   affecting both fare guidance and commission the same way the Vuma Deluxe multiplier does —
   the two **stack** rather than override each other, so a scheduled Deluxe ride reflects
-  both factors combined.
+  both factors combined. **Correction**: this stacking was only ever actually true for fare
+  guidance shown to riders — `resolveFullCommission` (the function used at the moment
+  commission is genuinely charged) never applied the scheduled multiplier at all, only
+  Deluxe. Fixed while building the wallet-affordability check below, since that check needed
+  to be accurate for scheduled trips and would otherwise have inherited the same gap.
 - **A driver can only have one active immediate trip at a time** — if a driver accepts a new
   ride while another is still `in_progress`, that new ride's screen stays gated (no map, no
   fare, no Start button — just a clear "finish your current trip first" prompt with a direct
@@ -242,6 +246,17 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   there yet for an appointment hours or days away. The driver's "Accepted — let's go!" banner
   is similarly reworded for a scheduled trip ("Accepted! Set a reminder for this appointment")
   since "let's go" doesn't fit something that isn't happening yet.
+- **Fixed: a scheduled ride that never got matched could go silently stuck** — investigating
+  this surfaced a real bug in the 24-hour stale-negotiation sweep (built before scheduled
+  rides existed): it judges staleness purely by `created_at`, but a scheduled ride is
+  routinely booked days ahead of its actual appointment — meaning it could be auto-cancelled
+  by that sweep long before its scheduled time even arrived. Fixed by exempting scheduled
+  rides from that sweep entirely (their own `scheduled_at` is the relevant reference point,
+  not creation time). Separately, when a scheduled ride's appointment time genuinely does
+  pass without ever being matched to a driver, the rider now gets a clear prompt — "keep it
+  open" (converts it to a normal, immediate request, visible and behaving exactly like any
+  other open request from that point) or cancel outright — rather than the request just
+  sitting there indefinitely with no resolution in sight.
 - **In-app trip reminders** — both rider and driver dashboards show a countdown banner for
   any accepted scheduled trip within the next 24 hours, with an optional "Set reminder" button
   that requests browser notification permission and, if granted, fires a local reminder about
@@ -801,6 +816,16 @@ simplified and should be hardened before handling real money and real users at s
   explicitly specified as automatic either way. If you'd rather warnings 1–2 sit in a queue
   for an admin to manually approve before the driver sees them, that's a straightforward
   change to `app/api/ratings/submit-driver-rating/route.ts` — say so and I'll adjust it.
+- **Bidding is blocked when a driver's wallet can't cover a specific trip's commission** —
+  replacing a much cruder earlier check (simply "is the balance above zero"). The new check
+  (`/api/rides/[id]/check-bid-affordability`) resolves the *actual* expected commission for
+  the specific bid amount, using the same `resolveFullCommission` function the real charge
+  will use at trip-start — so it's never out of sync with what actually gets charged. A small
+  grace drawdown is allowed (R1 / 10c) rather than requiring the resulting balance to land
+  exactly non-negative, since rounding on the eventual real fare could land either side of
+  the estimate made here. Applies identically to scheduled trips, since bid submission is the
+  same function regardless — no separate logic needed. Drivers on an active subscription are
+  exempt, matching the same exemption already used elsewhere.
 
 ## Publishing to Google Play Store
 

@@ -235,11 +235,23 @@ export default function DriverHomePage() {
 
   async function submitBid(ride: Ride) {
     if (!userId) return;
-    if (!hasActiveSubscription && Number(driverProfile?.prepaid_wallet_balance) <= 0) {
-      await modal.alert("Your prepaid wallet is empty. Top up your wallet, or switch to a subscription plan, to keep bidding.");
-      return;
-    }
     const amount = bidAmounts[ride.id] ?? ride.rider_offer;
+
+    if (!hasActiveSubscription) {
+      const affordRes = await fetch(`/api/rides/${ride.id}/check-bid-affordability`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bidAmount: amount }),
+      });
+      const affordData = await affordRes.json();
+      if (affordRes.ok && !affordData.canBid) {
+        await modal.alert(
+          `You've run out of wallet balance to cover this trip's commission. Top up your wallet, or switch to a subscription plan, to keep bidding.`
+        );
+        return;
+      }
+    }
+
     setSubmittingId(ride.id);
 
     const { data: inserted, error: insertErr } = await supabase
