@@ -13,6 +13,7 @@ import { COUNTRIES } from "@/lib/constants";
 import { SosPanel } from "@/components/safety/SosPanel";
 import { ContactCard } from "@/components/ride/ContactCard";
 import { ScheduledCancelPanel } from "@/components/ride/ScheduledCancelPanel";
+import { ScheduledUnmatchedPrompt } from "@/components/ride/ScheduledUnmatchedPrompt";
 import { ShareRideButton } from "@/components/ride/ShareRideButton";
 import { DownloadReceiptButton } from "@/components/ride/DownloadReceiptButton";
 import { DriverRatingForm } from "@/components/rider/DriverRatingForm";
@@ -417,6 +418,8 @@ export default function RiderRideDetailPage({ params }: { params: Promise<{ id: 
 
       {(ride.status === "requested" || ride.status === "negotiating") && (
         <>
+          <ScheduledUnmatchedPrompt ride={ride} onUpdate={loadRide} />
+
           <NegotiationTracker
             riderOffer={ride.rider_offer}
             driverOffer={bestOffer?.amount ?? null}

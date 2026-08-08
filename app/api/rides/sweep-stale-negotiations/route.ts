@@ -8,6 +8,14 @@ const STALE_HOURS = 24;
  * loads), same no-cron-job pattern as expireStaleOffers — Vercel's
  * Hobby-tier cron limits make a real scheduled job impractical here.
  *
+ * Scheduled rides are deliberately excluded (is_scheduled = false) — this
+ * sweep judges staleness by created_at, but a scheduled ride is routinely
+ * booked days ahead of its actual appointment, so it would otherwise be
+ * auto-cancelled long before its scheduled time even arrives. A scheduled
+ * ride that reaches its own scheduled_at without being matched is handled
+ * separately (see the rider's ride detail page), which prompts the rider
+ * to keep it open or cancel, rather than silently auto-cancelling it.
+ *
  * Deliberately marks rides 'cancelled' rather than hard-deleting them:
  * several tables (ride_credits.used_ride_id, sos_alerts.ride_id,
  * transactions, ratings) reference rides WITHOUT cascading deletes, so a
@@ -25,6 +33,7 @@ export async function POST() {
     .from("rides")
     .select("id, rider_id, applied_credit_id, wallet_applied, currency")
     .in("status", ["requested", "negotiating"])
+    .eq("is_scheduled", false)
     .lt("created_at", cutoff);
 
   if (!stale || !stale.length) return NextResponse.json({ ok: true, cancelled: 0 });
