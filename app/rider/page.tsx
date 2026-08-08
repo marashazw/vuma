@@ -318,7 +318,7 @@ export default function RiderHomePage() {
           fixed positioning means it stays put regardless of scroll.
           pointer-events-none so it never blocks taps on the map/inputs
           underneath. Scoped to this page only (not the whole app). */}
-      <div className="fixed inset-2 pointer-events-none z-40 border-4 rounded-2xl" style={{ borderColor: "#D97757" }} />
+      <div className="fixed pointer-events-none z-40 border-4" style={{ borderColor: "#D97757", inset: "6px", borderRadius: "10px" }} />
 
       <TripReminder role="rider" />
 
