@@ -314,6 +314,12 @@ export default function RiderHomePage() {
 
   return (
     <div className="space-y-5">
+      {/* Frames the full viewport edge, not just this page's content —
+          fixed positioning means it stays put regardless of scroll.
+          pointer-events-none so it never blocks taps on the map/inputs
+          underneath. Scoped to this page only (not the whole app). */}
+      <div className="fixed inset-0 pointer-events-none z-40 border-4" style={{ borderColor: "#D97757" }} />
+
       <TripReminder role="rider" />
 
       <div>
