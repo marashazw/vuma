@@ -352,6 +352,17 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   everything else rather than only visible buried in the drivers list. Every section explains
   what it means and why it's shown — the page is explicit that a flag isn't an accusation, just
   a pattern worth reviewing, since there's often an ordinary explanation.
+- **Deluxe applications now actually visible before clicking into a driver** — previously a
+  pending Deluxe application showed nowhere except on that specific driver's own detail page,
+  meaning admin had no way to notice one existed short of clicking into every driver
+  individually. The drivers list now shows a clear "Deluxe application pending" badge
+  alongside the existing certified badge. Also hardened the Quick Tasks query behind this
+  (and the driver-verification one right next to it) — both used an embedded PostgREST join
+  on the same non-standard FK naming (`driver_profiles.user_id -> profiles.id`) already
+  documented elsewhere in this file as having silently dropped rows once before, in the
+  Income Statement's driver wallet aggregation. Replaced with the same separate-query-plus-JS-join
+  pattern used there, and added `export const dynamic = "force-dynamic"` to the Overview
+  page as cheap insurance against any caching masking a freshly-submitted application.
 - **Basic rider lookup** (Admin → Riders) — previously there was no way to look up a rider at
   all beyond their name showing up in lists elsewhere; the fraud console's rider-side flags
   had nowhere to link to. Now a simple search (name, phone, email) leads to a detail page

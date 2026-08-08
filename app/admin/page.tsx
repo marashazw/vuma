@@ -6,6 +6,13 @@ import { currencyFormat } from "@/lib/commission";
 import { Car, Users, Banknote, Percent } from "lucide-react";
 import { subDays, format, startOfDay } from "date-fns";
 
+// Defensive: this page fetches everything server-side each request, and
+// Quick Tasks specifically needs to reflect genuinely current pending
+// items (a driver's freshly-submitted Deluxe application, etc.) — force
+// dynamic rendering rather than relying on the auth cookie read alone to
+// implicitly opt this route out of static caching.
+export const dynamic = "force-dynamic";
+
 export default async function AdminOverviewPage() {
   const supabase = await createClient();
 
@@ -16,8 +23,8 @@ export default async function AdminOverviewPage() {
     { data: txns },
     { count: pendingSubs },
     { count: pendingTopups },
-    { data: pendingVerifications },
-    { data: pendingDeluxe },
+    { data: pendingVerificationsRaw },
+    { data: pendingDeluxeRaw },
     { count: activeSos },
     { count: duplicateFlags },
     { count: suspendedDrivers },
@@ -33,12 +40,8 @@ export default async function AdminOverviewPage() {
     // documents — verification_status defaults to 'pending' for every
     // brand-new signup too, so submitted_at is what distinguishes a real
     // review request from someone who just hasn't touched the page yet.
-    supabase
-      .from("driver_profiles")
-      .select("user_id, profiles(full_name)")
-      .eq("verification_status", "pending")
-      .not("submitted_at", "is", null),
-    supabase.from("driver_profiles").select("user_id, profiles(full_name)").eq("deluxe_status", "pending"),
+    supabase.from("driver_profiles").select("user_id").eq("verification_status", "pending").not("submitted_at", "is", null),
+    supabase.from("driver_profiles").select("user_id").eq("deluxe_status", "pending"),
     supabase.from("sos_alerts").select("*", { count: "exact", head: true }).eq("status", "active"),
     supabase.from("driver_profiles").select("*", { count: "exact", head: true }).eq("duplicate_vehicle_flag", true),
     supabase
@@ -47,6 +50,28 @@ export default async function AdminOverviewPage() {
       .gt("suspended_until", new Date().toISOString()),
     supabase.from("suspension_appeals").select("*", { count: "exact", head: true }).eq("status", "pending"),
   ]);
+
+  // Separate query + JS join rather than an embedded PostgREST select —
+  // driver_profiles.user_id -> profiles.id is a non-standard FK name that
+  // PostgREST doesn't always auto-detect reliably, which silently dropped
+  // rows the same way in the Income Statement's driver wallet aggregation
+  // earlier in this project. Cheap insurance against the same bug here.
+  const pendingPersonIds = [...new Set([...(pendingVerificationsRaw || []), ...(pendingDeluxeRaw || [])].map((p) => p.user_id))];
+  const { data: pendingPersonProfiles } = await supabase
+    .from("profiles")
+    .select("id, full_name")
+    .in("id", pendingPersonIds.length ? pendingPersonIds : ["-"]);
+  const nameById: Record<string, string> = {};
+  (pendingPersonProfiles || []).forEach((p) => (nameById[p.id] = p.full_name));
+
+  const pendingVerifications = (pendingVerificationsRaw || []).map((p) => ({
+    user_id: p.user_id,
+    profiles: { full_name: nameById[p.user_id] || "Unknown" },
+  }));
+  const pendingDeluxe = (pendingDeluxeRaw || []).map((p) => ({
+    user_id: p.user_id,
+    profiles: { full_name: nameById[p.user_id] || "Unknown" },
+  }));
 
   const completedRides = rides?.filter((r) => r.status === "completed").length || 0;
   const totalCommission =

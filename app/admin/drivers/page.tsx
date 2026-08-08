@@ -124,6 +124,9 @@ export default function AdminDriversPage() {
                     {r.deluxe_status === "certified" && (
                       <span className="pill bg-navy-800 text-gold-400 !text-[10px]">Deluxe</span>
                     )}
+                    {r.deluxe_status === "pending" && (
+                      <span className="pill bg-gold-100 text-gold-700 !text-[10px] font-semibold">Deluxe application pending</span>
+                    )}
                     {(Array.isArray(r.badges) ? r.badges : []).map((b) => (
                       <span key={b} className="pill bg-navy-800 text-gold-400 !text-[10px]">
                         {b === "referral_hero" ? "Referral" : b === "sos_responder" ? "SOS" : b}
