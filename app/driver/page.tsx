@@ -6,8 +6,8 @@ import { createClient } from "@/lib/supabase/client";
 import { expireStaleOffers } from "@/lib/offers";
 import { haversineKm } from "@/lib/geo";
 import { currencyFormat } from "@/lib/commission";
-import { checkLowBalance, type LowBalanceCheck } from "@/lib/wallet";
-import type { Ride, DriverProfile } from "@/lib/types";
+import { checkLowBalance, getRemainingChangeCreditRoom, type LowBalanceCheck } from "@/lib/wallet";
+import type { Ride, DriverProfile, CountryCode } from "@/lib/types";
 import { Loader2, Power, MapPin, ArrowRight, Users, Check, Sparkles, CalendarClock, AlertTriangle } from "lucide-react";
 import { useModal } from "@/components/ui/ModalProvider";
 import { TripReminder } from "@/components/ui/TripReminder";
@@ -25,6 +25,7 @@ export default function DriverHomePage() {
   const [myBids, setMyBids] = useState<Map<string, { offerId: string; amount: number }>>(new Map());
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const [lowBalance, setLowBalance] = useState<LowBalanceCheck | null>(null);
+  const [remainingCreditRoom, setRemainingCreditRoom] = useState<number | null>(null);
   const [expandedScheduleId, setExpandedScheduleId] = useState<string | null>(null);
   const [matchingId, setMatchingId] = useState<string | null>(null);
   const [stopCounts, setStopCounts] = useState<Record<string, number>>({});
@@ -73,6 +74,9 @@ export default function DriverHomePage() {
         .maybeSingle();
       setHasActiveSubscription(!!sub);
       setLowBalance(await checkLowBalance(supabase, uid, Number(data?.prepaid_wallet_balance) || 0));
+
+      const { data: profile } = await supabase.from("profiles").select("country").eq("id", uid).single();
+      setRemainingCreditRoom(await getRemainingChangeCreditRoom(supabase, uid, (profile?.country as CountryCode) || "ZA"));
     },
     [supabase]
   );
@@ -401,6 +405,12 @@ export default function DriverHomePage() {
                         {currencyFormat(r.wallet_applied, r.currency)} wallet credit — rider pays{" "}
                         {currencyFormat(Math.max(r.rider_offer - r.wallet_applied, 0), r.currency)} cash, you get spendable
                         credit for the rest (subscription/priority only)
+                      </span>
+                    )}
+                    {r.wallet_applied > 0 && remainingCreditRoom !== null && r.wallet_applied > remainingCreditRoom && (
+                      <span className="pill bg-coral-500/10 text-coral-700 mt-1.5">
+                        You'd only be compensated {currencyFormat(remainingCreditRoom, r.currency)} of that{" "}
+                        {currencyFormat(r.wallet_applied, r.currency)} — you're near your monthly redemption limit
                       </span>
                     )}
                   </div>

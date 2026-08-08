@@ -296,6 +296,27 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   route (the one that started this audit) also now verifies a driver actually holds enough
   `credit_balance` before letting them give it away, rather than allowing that balance to go
   silently negative.
+- **Change-credit monthly caps are now admin-configurable** (Admin → Commissions, per
+  country) — previously hardcoded. These caps are deliberately a *separate* safeguard from
+  the accounting-integrity fix above, not made redundant by it: the integrity fix prevents a
+  balance from ever going invalid (negative or tampered), while these caps bound how much
+  value can move through the change-credit system even when every individual balance
+  involved is perfectly valid — the backstop against abuse patterns and the failure that
+  hasn't been found yet, not against invalid numbers. Raising either cap is gated behind an
+  explicit confirmation that restates this reasoning — visible every time, not just on first
+  use — since loosening a deliberate safety margin shouldn't blend in with an ordinary
+  settings change.
+- **Change-credit shortfall — now disclosed before, not after** — when a rider covers part
+  of a fare with their own wallet credit, the completing driver is compensated for the
+  difference, but only up to their remaining monthly redemption room (the cap above).
+  Previously, if a ride's wallet-applied amount exceeded that room, the driver only found
+  out *after* completing the trip — the shortfall itself was never tracked or refunded
+  anywhere, just silently absorbed. Now it's disclosed up front, both on the open-requests
+  feed before a driver bids and on the ride screen before they start the trip: "You'd only
+  be compensated $X of that $Y — you're near your monthly redemption limit," so a driver can
+  decide with full information rather than being surprised afterward. The driver's Earnings
+  page also now shows a full per-transaction history of this credit (previously only the
+  running total was visible, with no way to see which ride a given change came from).
 - **Personalized low-balance reminders** — a driver gets a "top up soon" nudge on their
   dashboard and Wallet page once their balance drops below **30% of whichever is higher: the
   amount of their last top-up, or their average daily commission usage over the last 30
@@ -473,9 +494,14 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
     validates and applies a rider's wallet credit atomically and server-side at ride
     creation (previously a client-computed amount with no server-side balance
     verification). See the migration file itself for the full design reasoning.
-33. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
+33. Then run `supabase/migrations/032_change_credit_caps_admin.sql` — moves the
+    change-credit monthly caps (previously hardcoded in `lib/constants.ts`) into
+    admin-configurable `fare_settings`, matching the existing deluxe/scheduled multiplier
+    pattern. Defaults match the previous hardcoded values exactly, so this changes nothing
+    behaviorally on its own — it only makes the numbers editable via Admin → Commissions.
+34. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
     for both ZA and ZW so the driver subscription page isn't empty).
-34. Go to Project Settings → API and copy:
+35. Go to Project Settings → API and copy:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ keep this secret — never expose it

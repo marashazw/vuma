@@ -15,6 +15,7 @@ import { DownloadReceiptButton } from "@/components/ride/DownloadReceiptButton";
 import type { Ride, RideStop, RoadAlert } from "@/lib/types";
 import { Loader2, Play, CheckCircle2, X, Star, PartyPopper, AlertTriangle, MapPin } from "lucide-react";
 import { useModal } from "@/components/ui/ModalProvider";
+import { getRemainingChangeCreditRoom } from "@/lib/wallet";
 import { formatDistanceToNow } from "date-fns";
 
 const RideMap = dynamic(() => import("@/components/map/RideMap"), { ssr: false });
@@ -42,6 +43,7 @@ function DriverRideDetailInner({ params }: { params: Promise<{ id: string }> }) 
   const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null);
   const [matchedAlerts, setMatchedAlerts] = useState<RoadAlert[]>([]);
   const [clearingAlertId, setClearingAlertId] = useState<string | null>(null);
+  const [remainingCreditRoom, setRemainingCreditRoom] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [completion, setCompletion] = useState<{
@@ -151,6 +153,11 @@ function DriverRideDetailInner({ params }: { params: Promise<{ id: string }> }) 
       cancelled = true;
     };
   }, [ride?.country, routeGeometry, supabase]);
+
+  useEffect(() => {
+    if (!ride || !userId || ride.wallet_applied <= 0 || ride.status === "completed") return;
+    getRemainingChangeCreditRoom(supabase, userId, ride.country).then(setRemainingCreditRoom);
+  }, [ride?.id, ride?.wallet_applied, ride?.status, ride?.country, userId, supabase]);
 
   async function clearMatchedAlert(alertId: string) {
     const ok = await modal.confirm("Mark this alert as resolved? It'll stop showing to other drivers.", {
@@ -313,6 +320,31 @@ function DriverRideDetailInner({ params }: { params: Promise<{ id: string }> }) 
           <p className="text-xs text-gold-600 font-semibold mt-1">This trip has {stops.length} stop{stops.length > 1 ? "s" : ""} — not a direct route.</p>
         )}
       </div>
+
+      {ride.wallet_applied > 0 && ride.status !== "completed" && (
+        <div
+          className={`card p-4 ${
+            remainingCreditRoom !== null && ride.wallet_applied > remainingCreditRoom
+              ? "bg-coral-500/5 border-coral-500/20"
+              : "bg-jade-50 border-jade-200"
+          }`}
+        >
+          <p className="text-sm font-semibold text-navy-700">
+            {currencyFormat(ride.wallet_applied, ride.currency)} of this fare is rider wallet credit
+          </p>
+          <p className="text-xs text-navy-500 mt-1">
+            You'll collect {currencyFormat(Math.max(Number(ride.final_fare ?? ride.rider_offer) - ride.wallet_applied, 0), ride.currency)}{" "}
+            in cash. The rest is compensated as spendable credit (subscription or priority boost only, not cash).
+          </p>
+          {remainingCreditRoom !== null && ride.wallet_applied > remainingCreditRoom && (
+            <p className="text-xs font-semibold text-coral-700 mt-2">
+              You're near your monthly redemption limit — you'd only be compensated{" "}
+              {currencyFormat(remainingCreditRoom, ride.currency)} of that {currencyFormat(ride.wallet_applied, ride.currency)}, not
+              the full amount.
+            </p>
+          )}
+        </div>
+      )}
 
       {matchedAlerts.length > 0 && (
         <div className="card p-4 bg-gold-50 border-gold-200 space-y-3">

@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { COUNTRIES } from "@/lib/constants";
+import type { CountryCode } from "@/lib/types";
 
 const USAGE_LOOKBACK_DAYS = 30;
 const LOW_BALANCE_FRACTION = 0.3;
@@ -64,4 +66,40 @@ export async function checkLowBalance(
     lastTopupAmount,
     avgDailyUsage,
   };
+}
+
+function startOfMonthUTC(): string {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+}
+
+/**
+ * How much change-credit compensation a driver has left this month before
+ * hitting their redemption cap. Used to disclose, before a driver bids on
+ * or starts a ride carrying rider wallet credit, whether they'd actually
+ * be compensated the full amount or only part of it — previously this
+ * only surfaced as a warning *after* completing the ride, by which point
+ * the driver had already done the work with no way to have known.
+ */
+export async function getRemainingChangeCreditRoom(
+  supabase: SupabaseClient,
+  driverId: string,
+  country: CountryCode
+): Promise<number> {
+  const { data: fareSettings } = await supabase
+    .from("fare_settings")
+    .select("change_credit_driver_monthly")
+    .eq("country", country)
+    .single();
+  const monthlyCap = fareSettings?.change_credit_driver_monthly ?? COUNTRIES[country].changeCreditDriverMonthly;
+
+  const { data: redeemedTxns } = await supabase
+    .from("driver_credit_transactions")
+    .select("amount")
+    .eq("driver_id", driverId)
+    .eq("type", "redeemed_change_credit")
+    .gte("created_at", startOfMonthUTC());
+  const redeemedSoFar = (redeemedTxns || []).reduce((sum, t) => sum + Number(t.amount), 0);
+
+  return Math.max(monthlyCap - redeemedSoFar, 0);
 }

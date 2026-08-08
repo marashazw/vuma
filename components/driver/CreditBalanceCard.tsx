@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import { currencyFormat } from "@/lib/commission";
 import { COUNTRIES } from "@/lib/constants";
 import type { CountryCode } from "@/lib/types";
-import { CreditCard, Zap, Loader2, Info } from "lucide-react";
+import { CreditCard, Zap, Loader2, Info, ChevronDown, ChevronUp } from "lucide-react";
+import { format } from "date-fns";
 
 export function CreditBalanceCard() {
   const supabase = createClient();
@@ -15,6 +16,10 @@ export function CreditBalanceCard() {
   const [days, setDays] = useState(1);
   const [buying, setBuying] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [history, setHistory] = useState<{ id: string; type: string; amount: number; notes: string | null; created_at: string }[]>(
+    []
+  );
+  const [showHistory, setShowHistory] = useState(false);
 
   async function load() {
     const {
@@ -25,6 +30,15 @@ export function CreditBalanceCard() {
     const { data: driverProfile } = await supabase.from("driver_profiles").select("credit_balance").eq("user_id", user.id).single();
     setCountry((profile?.country as CountryCode) || "ZA");
     setBalance(Number(driverProfile?.credit_balance) || 0);
+
+    const { data: txns } = await supabase
+      .from("driver_credit_transactions")
+      .select("id, type, amount, notes, created_at")
+      .eq("driver_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(30);
+    setHistory(txns || []);
+
     setLoading(false);
   }
 
@@ -93,6 +107,33 @@ export function CreditBalanceCard() {
         <p className="text-[11px] text-navy-400">
           Or use this balance toward your next subscription payment on the Plan tab.
         </p>
+      </div>
+
+      <div className="border-t border-navy-100 pt-3">
+        <button
+          className="text-xs font-semibold text-navy-500 flex items-center gap-1"
+          onClick={() => setShowHistory((v) => !v)}
+        >
+          {showHistory ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          {showHistory ? "Hide" : "Show"} history
+        </button>
+        {showHistory && (
+          <div className="mt-2 space-y-2">
+            {!history.length && <p className="text-xs text-navy-400">No credit activity yet.</p>}
+            {history.map((t) => (
+              <div key={t.id} className="flex items-center justify-between text-xs">
+                <div className="min-w-0 pr-2">
+                  <p className="text-navy-600 truncate">{t.notes || t.type.replace(/_/g, " ")}</p>
+                  <p className="text-navy-400">{format(new Date(t.created_at), "d MMM yyyy, HH:mm")}</p>
+                </div>
+                <span className={`fare-figure shrink-0 font-semibold ${t.amount >= 0 ? "text-jade-600" : "text-coral-600"}`}>
+                  {t.amount >= 0 ? "+" : ""}
+                  {currencyFormat(t.amount, cfg.currency)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
