@@ -353,6 +353,20 @@ export interface DriverWalletTransaction {
   created_at: string;
 }
 
+export interface DriverNotice {
+  id: string;
+  label: string;
+  title: string;
+  body: string | null;
+  link_url: string | null;
+  link_label: string | null;
+  position: "left" | "right";
+  is_active: boolean;
+  expires_at: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
 export interface RideStop {
   id: string;
   ride_id: string;

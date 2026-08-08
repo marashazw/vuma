@@ -353,6 +353,16 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   "Restore access" button once the investigation concludes, never on a timer. Uses the exact
   same `suspended_until` mechanism the automatic systems already rely on, so it's respected
   everywhere suspension is already checked, with no new enforcement path to get wrong.
+- **Driver dashboard notices/ads** (Admin → Notices) — admin can post to a side space on the
+  driver dashboard, visible on wide screens where the centered layout already left space
+  unused either side of the main content. Deliberately, the space itself carries no fixed
+  label or category — whatever heading the admin writes ("Sponsored ad," "Urgent notice,"
+  or anything else) is the only labelling that appears. Each notice has an optional expiry
+  date (no expiry means it runs until manually taken down), a left/right position choice,
+  and an optional link. The console keeps every past notice, live or not, with a one-click
+  **Repost** that pre-fills a new draft from an old one's content rather than needing to
+  retype it — the original stays in history with its own dates intact, since reposting
+  creates a new entry rather than reactivating the old one.
 - **Personalized low-balance reminders** — a driver gets a "top up soon" nudge on their
   dashboard and Wallet page once their balance drops below **30% of whichever is higher: the
   amount of their last top-up, or their average daily commission usage over the last 30
@@ -545,9 +555,12 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
     `suspension_reason` to `profiles` (riders), mirroring the field `driver_profiles`
     already had — needed so a manual admin freeze can carry a specific reason instead of
     falling back to a generic message.
-36. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
+36. Then run `supabase/migrations/035_driver_notices.sql` — adds admin-managed
+    notices/ads shown in the driver dashboard's side space on wide screens (Admin →
+    Notices to manage).
+37. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
     for both ZA and ZW so the driver subscription page isn't empty).
-37. Go to Project Settings → API and copy:
+38. Go to Project Settings → API and copy:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ keep this secret — never expose it

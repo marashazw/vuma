@@ -8,6 +8,7 @@ import { LocationBroadcaster } from "@/components/driver/LocationBroadcaster";
 import { BackToAdminBar } from "@/components/admin/BackToAdminBar";
 import { ConnectivityBanner } from "@/components/ui/ConnectivityBanner";
 import { SuspendedScreen } from "@/components/ui/SuspendedScreen";
+import { DriverNoticeRail } from "@/components/driver/DriverNoticeRail";
 
 export default async function DriverLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -37,7 +38,15 @@ export default async function DriverLayout({ children }: { children: React.React
       <TopBar title="Driver" />
       <ConnectivityBanner />
       <DriverDesktopTabs />
-      <main className="max-w-3xl mx-auto px-5 py-6">{children}</main>
+      <div className="flex justify-center gap-5">
+        <aside className="hidden xl:block w-64 shrink-0 pt-6">
+          <DriverNoticeRail position="left" />
+        </aside>
+        <main className="max-w-3xl w-full px-5 py-6">{children}</main>
+        <aside className="hidden xl:block w-64 shrink-0 pt-6">
+          <DriverNoticeRail position="right" />
+        </aside>
+      </div>
       <BottomNavClient />
       <SosListener />
       <LocationBroadcaster />

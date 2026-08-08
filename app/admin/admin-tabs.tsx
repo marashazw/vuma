@@ -11,6 +11,7 @@ const TABS = [
   { href: "/admin/commissions", label: "Commissions" },
   { href: "/admin/subscriptions", label: "Subscriptions" },
   { href: "/admin/wallet-topups", label: "Wallet Top-ups" },
+  { href: "/admin/notices", label: "Notices" },
   { href: "/admin/appeals", label: "Appeals" },
   { href: "/admin/fraud", label: "Fraud" },
   { href: "/admin/referrals", label: "Referrals" },
