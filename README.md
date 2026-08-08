@@ -272,6 +272,30 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   and the newer, uncapped path silently bypassed the monthly anti-abuse limit the original
   mechanism was deliberately designed to enforce. Removed the duplicate; the original,
   capped mechanism is the one place this compensation happens.
+- **System-wide accounting integrity — no fictitious money, no privilege escalation via
+  direct client tampering** — a systematic audit (prompted by fixing a driver change-credit
+  balance check) found that `profiles` and `driver_profiles` row-level security restricted
+  *which row* an authenticated user could update, but nothing restricted *which column* or
+  *value* — meaning a direct API call bypassing the UI entirely could set `wallet_balance`,
+  `is_super_admin`, `role`, `verification_status`, `credit_balance`, `prepaid_wallet_balance`,
+  or any other sensitive field on the caller's own account to anything at all. Fixed with
+  database-level triggers, not just application code, since RLS alone can't express "block
+  this column unless the caller is Vuma's own service role" and application-layer checks can
+  always be bypassed by a direct request the UI never makes. Numeric financial fields only
+  block *increases* from non-service-role callers (a decrease is a user legitimately
+  spending their own balance, never the exploit risk); status/privilege fields are blocked
+  outright except a narrow, genuinely legitimate carve-out (a driver may move their own
+  verification or Deluxe status to `pending` — requesting review — but never directly to an
+  approved or rejected outcome). Every existing legitimate direct-client mutation in the
+  entire codebase was traced and verified against these rules before this shipped, to
+  confirm nothing real would break. A related, more specific gap was fixed at the same
+  time: a rider's wallet-credit application to a new ride was computed client-side with no
+  server-side re-verification of their actual current balance — now enforced atomically by
+  a database trigger that re-reads the true balance and rejects the ride outright if there
+  isn't enough, rather than trusting a client-supplied figure. The change-credit issuing
+  route (the one that started this audit) also now verifies a driver actually holds enough
+  `credit_balance` before letting them give it away, rather than allowing that balance to go
+  silently negative.
 - **Personalized low-balance reminders** — a driver gets a "top up soon" nudge on their
   dashboard and Wallet page once their balance drops below **30% of whichever is higher: the
   amount of their last top-up, or their average daily commission usage over the last 30
@@ -439,9 +463,19 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
     driver's 50% no-show penalty with a flag-based system shared by both roles (a second
     flag within 3 months → 7-day suspension, not permanent), adds suspension appeals, wallet
     top-up consent tracking, and the admin-configurable scheduled-trip fee factor.
-32. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
+32. **Then run `supabase/migrations/031_accounting_integrity.sql` — this one matters more
+    than most.** It closes a critical gap: `profiles` and `driver_profiles` had row-level
+    security restricting *which row* could be updated, but nothing restricting *which
+    column* or *value* — meaning any authenticated user could, via a direct API call
+    bypassing the UI entirely, set their own `wallet_balance`, `is_super_admin`, `role`,
+    `verification_status`, or any other sensitive field on their own account. This adds
+    database-level triggers closing that gap for both tables, plus a new trigger that
+    validates and applies a rider's wallet credit atomically and server-side at ride
+    creation (previously a client-computed amount with no server-side balance
+    verification). See the migration file itself for the full design reasoning.
+33. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
     for both ZA and ZW so the driver subscription page isn't empty).
-33. Go to Project Settings → API and copy:
+34. Go to Project Settings → API and copy:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ keep this secret — never expose it

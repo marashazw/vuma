@@ -109,6 +109,16 @@ export async function POST(req: NextRequest) {
   const { data: driverProfile } = await admin.from("driver_profiles").select("credit_balance").eq("user_id", user.id).single();
   const { data: riderProfile } = await admin.from("profiles").select("wallet_balance, wallet_currency").eq("id", ride.rider_id).single();
 
+  const driverCreditBalance = Number(driverProfile?.credit_balance || 0);
+  if (driverCreditBalance < creditAmount) {
+    return NextResponse.json(
+      {
+        error: `You only have ${limits.currencySymbol}${driverCreditBalance.toFixed(2)} of credit balance available — you can't issue more than you have.`,
+      },
+      { status: 400 }
+    );
+  }
+
   if (riderProfile?.wallet_currency && riderProfile.wallet_currency !== ride.currency) {
     return NextResponse.json(
       { error: `This rider's wallet is in ${riderProfile.wallet_currency}, can't add ${ride.currency} credit` },
@@ -118,7 +128,7 @@ export async function POST(req: NextRequest) {
 
   const { error: debitErr } = await admin
     .from("driver_profiles")
-    .update({ credit_balance: Number(driverProfile?.credit_balance || 0) - creditAmount })
+    .update({ credit_balance: driverCreditBalance - creditAmount })
     .eq("user_id", user.id);
   if (debitErr) console.error("[credit-change] FAILED to debit driver credit_balance:", debitErr);
 

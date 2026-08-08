@@ -270,10 +270,12 @@ export default function RiderHomePage() {
     }
 
     if (!insertErr && data && walletApplyAmount > 0) {
-      await supabase
-        .from("profiles")
-        .update({ wallet_balance: walletBalance - walletApplyAmount, wallet_currency: cfg.currency })
-        .eq("id", user.id);
+      // The actual wallet_balance deduction now happens atomically inside
+      // a database trigger the moment this ride is inserted (see migration
+      // 031) — it re-verifies the rider's true current balance server-side
+      // rather than trusting this client-computed amount, and rejects the
+      // insert outright if there isn't enough. Doing it again here would
+      // double-deduct. This is just the ledger record of what happened.
       await supabase.from("wallet_transactions").insert({
         rider_id: user.id,
         ride_id: data.id,
