@@ -573,9 +573,16 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
 36. Then run `supabase/migrations/035_driver_notices.sql` — adds admin-managed
     notices/ads shown in the driver dashboard's side space on wide screens (Admin →
     Notices to manage).
-37. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
+37. Then run `supabase/migrations/036_scheduled_commission_reservation.sql` — adds
+    `driver_profiles.reserved_balance` and `rides.commission_reserved`, so a scheduled
+    trip's expected commission is held from a driver's available balance at acceptance
+    rather than left exposed until trip-start.
+38. Then run `supabase/migrations/037_wallet_topups_realtime.sql` — enables realtime on
+    `driver_wallet_topups` (created in migration 027 but never added to the realtime
+    publication), needed for the driver to be notified live when a top-up is approved.
+39. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
     for both ZA and ZW so the driver subscription page isn't empty).
-38. Go to Project Settings → API and copy:
+40. Go to Project Settings → API and copy:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ keep this secret — never expose it
@@ -844,6 +851,18 @@ simplified and should be hardened before handling real money and real users at s
   message now reads "You have no credit — top up to take new trips" instead, on both the
   driver dashboard and the Wallet page — using the same available-balance figure (net of any
   reservation) as everything else in this section, not the raw balance.
+- **Driver is notified live when a wallet top-up is approved** — previously the only way to
+  know a top-up had gone through was reloading the page and noticing the balance had changed.
+  The Wallet page now has a realtime subscription on the driver's own top-up requests; the
+  moment an admin approves one, a clear "Top-up approved" notice appears with the amount and
+  a link back to Requests. Deliberately doesn't navigate anywhere automatically — a driver
+  might still want to submit another top-up while they're already on the page, so it's a
+  dismissible notice with a link to follow if they want it, not something that pulls them
+  away. **Found and fixed a real prerequisite gap while building this**: `driver_wallet_topups`
+  was created back in the original wallet migration but never actually added to Supabase's
+  realtime publication — without that, this notification (or any realtime feature on this
+  table) would have silently never fired, no error, just nothing happening. Fixed in
+  migration 037.
 
 ## Publishing to Google Play Store
 

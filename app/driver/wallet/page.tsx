@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useModal } from "@/components/ui/ModalProvider";
 import { currencyFormat } from "@/lib/commission";
 import { COUNTRIES } from "@/lib/constants";
 import { checkLowBalance, type LowBalanceCheck } from "@/lib/wallet";
 import type { DriverWalletTopup, DriverWalletTransaction, CountryCode } from "@/lib/types";
-import { Loader2, Wallet, Upload, Paperclip, X, ArrowUpRight, ArrowDownRight, Clock, AlertTriangle } from "lucide-react";
+import { Loader2, Wallet, Upload, Paperclip, X, ArrowUpRight, ArrowDownRight, Clock, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 
 export default function DriverWalletPage() {
@@ -18,6 +19,7 @@ export default function DriverWalletPage() {
   const [country, setCountry] = useState<CountryCode>("ZA");
   const [balance, setBalance] = useState(0);
   const [reservedBalance, setReservedBalance] = useState(0);
+  const [justApproved, setJustApproved] = useState<{ amount: number; currency: string } | null>(null);
   const [lowBalance, setLowBalance] = useState<LowBalanceCheck | null>(null);
   const [transactions, setTransactions] = useState<DriverWalletTransaction[]>([]);
   const [pendingTopups, setPendingTopups] = useState<DriverWalletTopup[]>([]);
@@ -73,6 +75,33 @@ export default function DriverWalletPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Watches for this driver's own top-up requests being approved —
+  // previously there was no way to know a top-up had gone through short
+  // of manually reloading the page. Deliberately doesn't navigate
+  // anywhere automatically: shown as a persistent notice with a link
+  // back to Requests, since the driver might still want to submit
+  // another top-up while they're already on this page.
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel("own-wallet-topups")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "driver_wallet_topups", filter: `driver_id=eq.${userId}` },
+        (payload) => {
+          const updated = payload.new as DriverWalletTopup;
+          if (updated.status === "approved") {
+            setJustApproved({ amount: Number(updated.amount), currency: updated.currency });
+          }
+          load();
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, supabase]);
 
   async function submitTopup() {
     if (!amount || Number(amount) <= 0 || !userId) return;
@@ -135,6 +164,27 @@ export default function DriverWalletPage() {
   return (
     <div className="space-y-5">
       <h1 className="text-2xl font-bold">Wallet</h1>
+
+      {justApproved && (
+        <div className="card p-4 bg-jade-50 border-jade-200 flex items-start gap-2.5">
+          <CheckCircle2 className="w-4 h-4 text-jade-600 mt-0.5 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-jade-700">
+              Top-up approved — {currencyFormat(justApproved.amount, justApproved.currency)} added to your balance
+            </p>
+            <p className="text-xs text-navy-500 mt-1">
+              You're all set to go online. Still on this page? Feel free to submit another top-up below if you'd
+              like.
+            </p>
+            <Link href="/driver" className="text-xs font-semibold text-jade-600 underline mt-1.5 inline-block">
+              Go to Requests
+            </Link>
+          </div>
+          <button onClick={() => setJustApproved(null)} className="text-navy-300 hover:text-navy-500 shrink-0">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       <div className="card p-6 bg-navy-800">
         <p className="text-xs text-navy-300 flex items-center gap-1.5 mb-1">
