@@ -1,11 +1,9 @@
 "use client";
 
 import { DesktopTabs } from "@/components/ui/DesktopTabs";
-import { useOpenRequestsCount } from "@/lib/hooks/useOpenRequestsCount";
 import { Car, Wallet, PiggyBank, CreditCard, ShieldCheck, Gift, MessageSquareWarning } from "lucide-react";
 
-export function DriverDesktopTabs() {
-  const openRequests = useOpenRequestsCount();
+export function DriverDesktopTabs({ openRequests = 0 }: { openRequests?: number }) {
   return (
     <DesktopTabs
       items={[

@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { TopBar } from "@/components/ui/TopBar";
-import { BottomNavClient } from "./bottom-nav-client";
-import { DriverDesktopTabs } from "./desktop-tabs-client";
+import { DriverNavWithCount } from "./driver-nav-with-count";
 import { SosListener } from "@/components/driver/SosListener";
 import { LocationBroadcaster } from "@/components/driver/LocationBroadcaster";
 import { BackToAdminBar } from "@/components/admin/BackToAdminBar";
@@ -37,7 +36,7 @@ export default async function DriverLayout({ children }: { children: React.React
       {profile?.is_super_admin && <BackToAdminBar currentlyViewing="driver" />}
       <TopBar title="Driver" />
       <ConnectivityBanner />
-      <DriverDesktopTabs />
+      <DriverNavWithCount />
       <div className="flex justify-center gap-5">
         <aside className="hidden xl:block w-64 shrink-0 pt-6">
           <DriverNoticeRail position="left" />
@@ -47,7 +46,6 @@ export default async function DriverLayout({ children }: { children: React.React
           <DriverNoticeRail position="right" />
         </aside>
       </div>
-      <BottomNavClient />
       <SosListener />
       <LocationBroadcaster />
     </div>

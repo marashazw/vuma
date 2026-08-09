@@ -1,11 +1,9 @@
 "use client";
 
 import { BottomNav } from "@/components/ui/BottomNav";
-import { useOpenRequestsCount } from "@/lib/hooks/useOpenRequestsCount";
 import { Car, Wallet, PiggyBank, CreditCard, ShieldCheck, Gift, MessageSquareWarning } from "lucide-react";
 
-export function BottomNavClient() {
-  const openRequests = useOpenRequestsCount();
+export function BottomNavClient({ openRequests = 0 }: { openRequests?: number }) {
   return (
     <BottomNav
       items={[
