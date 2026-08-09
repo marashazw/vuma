@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { LocationSearchInput } from "@/components/map/LocationSearchInput";
 import { NearbyDriversBadge } from "@/components/rider/NearbyDriversBadge";
+import { EditableLocationBadge } from "@/components/rider/EditableLocationBadge";
 import { TripReminder } from "@/components/ui/TripReminder";
 import { suggestedFareRange, reverseGeocode, getRoadRoute, type RoadRoute } from "@/lib/geo";
 import { getWeatherAdvisory, type WeatherAdvisory } from "@/lib/weather";
@@ -13,7 +14,7 @@ import { COUNTRIES } from "@/lib/constants";
 import type { CountryCode, FareSettings } from "@/lib/types";
 import { currencyFormat } from "@/lib/commission";
 import type { RideCredit } from "@/lib/types";
-import { Loader2, Navigation, Gift, Users, Wallet, Sparkles, X, Plus, CloudRain, Snowflake, Sun, CalendarClock, Check, ChevronRight } from "lucide-react";
+import { Loader2, Navigation, Gift, Users, Wallet, Sparkles, X, Plus, CloudRain, Snowflake, Sun, CalendarClock } from "lucide-react";
 
 const RideMap = dynamic(() => import("@/components/map/RideMap"), { ssr: false });
 
@@ -29,8 +30,6 @@ export default function RiderHomePage() {
 
   const [country, setCountry] = useState<CountryCode>("ZA");
   const [pickup, setPickup] = useState<Point | null>(null);
-  const [editingPickupLabel, setEditingPickupLabel] = useState(false);
-  const [pickupLabelDraft, setPickupLabelDraft] = useState("");
   const [dropoff, setDropoff] = useState<Point | null>(null);
   const [stops, setStops] = useState<Point[]>([]);
   const [offer, setOffer] = useState<number | "">("");
@@ -357,54 +356,11 @@ export default function RiderHomePage() {
             }}
           />
           {pickup && (
-            <div className="absolute top-2 left-1/2 -translate-x-1/2 w-[75%] max-w-[260px] z-[1000]">
-              {editingPickupLabel ? (
-                <div className="bg-white rounded-xl shadow-lg p-2 flex items-center gap-2">
-                  <input
-                    autoFocus
-                    className="input flex-1 !py-2 text-sm"
-                    value={pickupLabelDraft}
-                    onChange={(e) => setPickupLabelDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        setPickup({ ...pickup, label: pickupLabelDraft.trim() || pickup.label });
-                        setEditingPickupLabel(false);
-                      }
-                      if (e.key === "Escape") setEditingPickupLabel(false);
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="w-8 h-8 rounded-lg bg-jade-500 text-white flex items-center justify-center shrink-0"
-                    onClick={() => {
-                      setPickup({ ...pickup, label: pickupLabelDraft.trim() || pickup.label });
-                      setEditingPickupLabel(false);
-                    }}
-                  >
-                    <Check className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    className="w-8 h-8 rounded-lg bg-navy-100 text-navy-500 flex items-center justify-center shrink-0"
-                    onClick={() => setEditingPickupLabel(false)}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className="bg-white rounded-xl shadow-lg px-3 py-1.5 w-full text-left flex items-center justify-between gap-2"
-                  onClick={() => {
-                    setPickupLabelDraft(pickup.label);
-                    setEditingPickupLabel(true);
-                  }}
-                >
-                  <p className="text-xs font-semibold text-navy-800 truncate min-w-0">{pickup.label}</p>
-                  <ChevronRight className="w-3.5 h-3.5 text-navy-300 shrink-0" />
-                </button>
-              )}
-            </div>
+            <EditableLocationBadge
+              label={pickup.label}
+              position="top"
+              onSave={(newLabel) => setPickup({ ...pickup, label: newLabel })}
+            />
           )}
           {!pickup && (locating || locationError) && (
             <div className="absolute inset-x-0 bottom-0 bg-white/95 backdrop-blur px-4 py-2.5 flex items-center justify-between gap-2 text-sm">
@@ -433,12 +389,15 @@ export default function RiderHomePage() {
           <NearbyDriversBadge pickup={pickup ? { lat: pickup.lat, lng: pickup.lng } : null} />
           {pickup && (
             <p className="text-xs text-navy-400 -mt-1 mb-1">
-              Address not quite right? Drag the pin{dropoff ? "s" : ""} on the map to the exact spot.
+              Can't find your exact address? Drag the pin{dropoff ? "s" : ""} on the map to the exact spot, or edit
+              the text below directly — e.g. add a house number the search couldn't find.
             </p>
           )}
           <LocationSearchInput
-            placeholder={pickup?.label || "Pickup location"}
+            value={pickup?.label}
+            placeholder="Pickup location"
             onSelect={(r) => setPickup(r)}
+            onTextChange={(text) => pickup && setPickup({ ...pickup, label: text })}
             countryCodes={country === "OTHER" ? undefined : country.toLowerCase()}
             bias={{ lat: cfg.center[0], lng: cfg.center[1] }}
           />
@@ -448,8 +407,12 @@ export default function RiderHomePage() {
               <span className="text-xs text-navy-400 w-4 shrink-0">{i + 1}.</span>
               <div className="flex-1">
                 <LocationSearchInput
-                  placeholder={stop.label || `Stop ${i + 1}`}
+                  value={stop.label}
+                  placeholder={`Stop ${i + 1}`}
                   onSelect={(r) => setStops((prev) => prev.map((s, idx) => (idx === i ? r : s)))}
+                  onTextChange={(text) =>
+                    setStops((prev) => prev.map((s, idx) => (idx === i && s.label ? { ...s, label: text } : s)))
+                  }
                   countryCodes={country === "OTHER" ? undefined : country.toLowerCase()}
                   bias={pickup ? { lat: pickup.lat, lng: pickup.lng } : { lat: cfg.center[0], lng: cfg.center[1] }}
                 />
@@ -473,8 +436,10 @@ export default function RiderHomePage() {
           </button>
 
           <LocationSearchInput
+            value={dropoff?.label}
             placeholder="Drop-off location"
             onSelect={(r) => setDropoff(r)}
+            onTextChange={(text) => dropoff && setDropoff({ ...dropoff, label: text })}
             countryCodes={country === "OTHER" ? undefined : country.toLowerCase()}
             bias={pickup ? { lat: pickup.lat, lng: pickup.lng } : { lat: cfg.center[0], lng: cfg.center[1] }}
           />

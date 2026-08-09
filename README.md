@@ -377,17 +377,37 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   (`/api/drivers/public-info`) that returns only `full_name` and `avatar_url`, and only for
   drivers it independently re-verifies are currently online and verified — not a general
   "look up any user by id" tool.
-- **Pickup marker redesigned as a humanoid "hailing" badge, closer street-level zoom, and an
-  editable address badge on the map itself** — requested against a reference screenshot from
-  a competitor app. The pickup pin is now a black rounded badge with a white person-hailing
-  silhouette, connected by a stem to the precise coordinate below, replacing the previous plain
-  teardrop pin. The map's initial zoom now matches the street-level detail it was already
-  dynamically settling on once a pickup point exists (16–17), just without a brief flash at
-  the old, wider zoom on first render. A floating "Where from" card now sits directly on the
-  map showing the current pickup address — tapping it opens an inline text field to correct
-  the address text directly (e.g., adding a house number or landmark) without changing the
-  underlying pin location, separate from the existing drag-to-adjust and search-to-replace
-  options that were already there.
+  **Correction, found and fixed in a later round**: this originally queried
+  `profiles.avatar_url` — a field nothing in this codebase ever actually writes to. The real
+  profile photo (uploaded during verification, explicitly labelled "shown to riders" in that
+  flow) lives at `driver_profiles.profile_photo_path`, in the *private* `driver-documents`
+  bucket alongside ID documents — meaning even the correct field alone wasn't enough, since a
+  rider's browser can't load a private bucket path as a plain image URL. Fixed by generating a
+  short-lived signed URL server-side (via `createSignedUrls`, 1-hour expiry) in the same route,
+  rather than exposing the bucket more broadly. Until this fix, no driver's real photo had ever
+  actually appeared here, regardless of how correctly they'd uploaded one.
+- **Pickup marker redesigned as a humanoid "hailing" badge, and a closer street-level zoom** —
+  requested against a reference screenshot from a competitor app. The pickup pin is now a black
+  rounded badge with a white person-hailing silhouette, connected by a stem to the precise
+  coordinate below, replacing the previous plain teardrop pin. The map's initial zoom now
+  matches the street-level detail it was already dynamically settling on once a pickup point
+  exists (16–17), just without a brief flash at the old, wider zoom on first render.
+- **Exact addresses the geocoder can't find (e.g. a specific house number on a side street)
+  can be typed in directly** — many Zimbabwean addresses genuinely aren't geocoded with
+  house-number precision yet in Google's own map data, even though the geocode route already
+  runs Google's dedicated Geocoding API in parallel with Text Search specifically to maximize
+  exact-match precision where the data exists. When it doesn't, no amount of better querying
+  fixes data that isn't there. Two things address this together: the existing floating "Where
+  from" badge on the map (pickup only — the rider's own current location) stays as it was,
+  editable in place; and `LocationSearchInput` is now a controlled component that shows the
+  actual selected address as real, editable text for pickup, dropoff, and stops alike
+  (previously it only ever showed as a grayed-out placeholder — nothing was actually there to
+  edit). A rider can drag any pin to the exact spot and then edit the text directly — e.g.
+  adding "1606" or a suburb name the geocoder couldn't resolve — committed on blur or Enter,
+  distinct from selecting a fresh result from the dropdown. A dropoff-side map badge was tried
+  and deliberately dropped before shipping, reconsidered as likely too cluttered on a
+  224px-tall map already carrying a route line, two markers, and a screen-edge effect — the
+  editable search field covers dropoff and stops without that risk.
 - **Basic rider lookup** (Admin → Riders) — previously there was no way to look up a rider at
   all beyond their name showing up in lists elsewhere; the fraud console's rider-side flags
   had nowhere to link to. Now a simple search (name, phone, email) leads to a detail page
