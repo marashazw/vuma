@@ -29,7 +29,16 @@ export function ScheduledCancelPanel({
   const scheduledTime = new Date(ride.scheduled_at).getTime();
   const withinLockWindow = scheduledTime - Date.now() <= LOCK_WINDOW_MS;
   const pastGracePeriod = Date.now() - scheduledTime > NO_SHOW_GRACE_MS;
+  const pastScheduledTime = Date.now() >= scheduledTime;
   const isProposer = ride.scheduled_cancel_proposed_by === currentUserId;
+
+  // For the rider, the brief window between the scheduled time passing
+  // and the grace period ending has nothing valid to offer here — no
+  // cancel (removed above), no report-no-show yet (still within grace).
+  // TripReminder's own dashboard dialog already covers exactly this
+  // window ("Is your driver here?"), so an empty-looking card here would
+  // be worse than not rendering at all.
+  if (!isDriver && pastScheduledTime && !pastGracePeriod) return null;
 
   async function proposeCancel() {
     if (!reason.trim()) return;
@@ -139,17 +148,21 @@ export function ScheduledCancelPanel({
       </p>
       {!showProposeForm ? (
         <div className="grid grid-cols-1 gap-2">
-          <button className="btn-ghost !text-sm" onClick={() => setShowProposeForm(true)}>
-            Propose cancelling (needs the other side to agree — no penalty either way)
-          </button>
+          {(isDriver || !pastScheduledTime) && (
+            <button className="btn-ghost !text-sm" onClick={() => setShowProposeForm(true)}>
+              Propose cancelling (needs the other side to agree — no penalty either way)
+            </button>
+          )}
           {!isDriver && pastGracePeriod && (
             <button className="btn-ghost !text-sm !text-coral-600" disabled={busy} onClick={() => directCancel(true)}>
               Driver didn't show up — report no-show
             </button>
           )}
-          <button className="btn-ghost !text-sm !text-coral-600" disabled={busy} onClick={() => directCancel(false)}>
-            Cancel directly {withinLockWindow ? "(consequences apply)" : ""}
-          </button>
+          {(isDriver || !pastScheduledTime) && (
+            <button className="btn-ghost !text-sm !text-coral-600" disabled={busy} onClick={() => directCancel(false)}>
+              Cancel directly {withinLockWindow ? "(consequences apply)" : ""}
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-2">

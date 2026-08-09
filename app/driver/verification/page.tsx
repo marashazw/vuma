@@ -20,6 +20,7 @@ export default function DriverVerificationPage() {
   const [profile, setProfile] = useState<DriverProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [declarationAccepted, setDeclarationAccepted] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const [vehicleMake, setVehicleMake] = useState("");
@@ -130,11 +131,15 @@ export default function DriverVerificationPage() {
   }
 
   async function submitForReview() {
-    if (!userId) return;
+    if (!userId || !declarationAccepted) return;
     setSubmitting(true);
     await supabase
       .from("driver_profiles")
-      .update({ verification_status: "pending", submitted_at: new Date().toISOString() })
+      .update({
+        verification_status: "pending",
+        submitted_at: new Date().toISOString(),
+        declaration_accepted_at: new Date().toISOString(),
+      })
       .eq("user_id", userId);
     await load();
     setSubmitting(false);
@@ -155,7 +160,7 @@ export default function DriverVerificationPage() {
     !!profile.license_document_path &&
     !!profile.vehicle_registration_path &&
     !!profile.profile_photo_path;
-  const readyToSubmit = allUploaded && vehicleComplete;
+  const readyToSubmit = allUploaded && vehicleComplete && declarationAccepted;
 
   return (
     <div className="space-y-5">
@@ -325,6 +330,25 @@ export default function DriverVerificationPage() {
       </div>
 
       {profile.verification_status !== "verified" && (
+        <div className="card p-4 bg-navy-50">
+          <label className="flex items-start gap-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              className="w-4 h-4 mt-0.5 shrink-0 accent-gold-400"
+              checked={declarationAccepted}
+              onChange={(e) => setDeclarationAccepted(e.target.checked)}
+            />
+            <span className="text-xs text-navy-600 leading-relaxed">
+              I understand that I am authorised by relevant legislation and authorities to participate in this
+              business, my vehicle is appropriately insured and certified, and I promise to be in full compliance
+              with local laws at all times. I acknowledge that Vuma will not be held accountable for my actions and
+              omissions.
+            </span>
+          </label>
+        </div>
+      )}
+
+      {profile.verification_status !== "verified" && (
         <button className="btn-primary w-full" disabled={!readyToSubmit || submitting} onClick={submitForReview}>
           {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
           {submitted ? "Submitted — awaiting review" : "Submit for review"}
@@ -332,7 +356,9 @@ export default function DriverVerificationPage() {
       )}
       {!readyToSubmit && profile.verification_status !== "verified" && (
         <p className="text-xs text-navy-400 text-center">
-          Complete your vehicle details and upload all four documents to submit for review.
+          {allUploaded && vehicleComplete
+            ? "Accept the declaration above to submit for review."
+            : "Complete your vehicle details and upload all four documents to submit for review."}
         </p>
       )}
     </div>

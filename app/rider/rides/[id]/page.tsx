@@ -536,20 +536,19 @@ export default function RiderRideDetailPage({ params }: { params: Promise<{ id: 
           )}
 
           {(() => {
-            const scheduledTime = ride.is_scheduled && ride.scheduled_at ? new Date(ride.scheduled_at).getTime() : null;
-            // Once genuinely close to the scheduled time, the driver could
-            // plausibly be en route — the normal arriving countdown becomes
-            // accurate again. Well before that, "arriving in X min" would
-            // be misleading, since the driver isn't actually heading there
-            // yet for an appointment hours or days away.
-            const isImminent = !scheduledTime || scheduledTime - Date.now() <= 45 * 60 * 1000;
-
-            if (ride.is_scheduled && !isImminent) {
+            // Scheduled rides always show the scheduled time itself, never
+            // the live "arriving in X min" countdown — that message implies
+            // the driver is actively being tracked en route right now,
+            // which isn't a meaningful signal for a scheduled appointment
+            // even once it's imminent: the driver's live location could
+            // still be broadcasting from anywhere if they're online for
+            // other reasons, not necessarily already heading to pickup.
+            if (ride.is_scheduled && ride.scheduled_at) {
               return (
                 <div className="mt-4 flex items-center justify-center gap-2 text-navy-600 font-semibold">
                   <CalendarClock className="w-4 h-4" />
-                  Driver confirmed for{" "}
-                  {new Date(ride.scheduled_at!).toLocaleString(undefined, {
+                  Driver scheduled to arrive at{" "}
+                  {new Date(ride.scheduled_at).toLocaleString(undefined, {
                     weekday: "short",
                     day: "numeric",
                     month: "short",

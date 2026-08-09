@@ -439,6 +439,36 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   disputing an arrival claim that doesn't match reality). Shown ahead of the normal 10-minute
   grace-period-gated prompt, since the driver has already made a specific, disputable claim
   worth letting the rider act on immediately rather than waiting out the usual window.
+- **Mandatory driver declaration before verification submission** — a required checkbox
+  ("I understand that I am authorised by relevant legislation and authorities to participate
+  in this business, my vehicle is appropriately insured and certified, and I promise to be in
+  full compliance with local laws at all times. I acknowledge that Vuma will not be held
+  accountable for my actions and omissions") gates the Submit for Review button, alongside
+  the existing document/vehicle-completeness checks. Timestamped
+  (`driver_profiles.declaration_accepted_at`), same reasoning as wallet top-up consent — a
+  real record of when it was accepted, not just a boolean.
+- **Scheduled rides never show a live "arriving in X min" countdown, at any proximity** —
+  previously this switched to the live countdown once genuinely close to the scheduled time,
+  but that implies active GPS tracking of a driver actually en route, which isn't a
+  meaningful signal for a scheduled appointment even when imminent (the driver's location
+  could be broadcasting for unrelated reasons, not necessarily already heading to pickup).
+  Now always shows "Driver scheduled to arrive at [date/time]" instead, for the life of a
+  scheduled ride.
+- **Rider can no longer "Cancel" once a scheduled trip's time has arrived — only confirm
+  arrival or report a no-show.** Removed from both the dashboard reminder dialog
+  (`TripReminder`) and the ride screen's own cancel panel (`ScheduledCancelPanel`, which had
+  been left showing "Cancel directly" regardless of timing — a real bypass of the same
+  restriction just added to the dashboard dialog). Both options are available whether or not
+  the driver has explicitly confirmed arrival, since they may genuinely be there even without
+  having tapped their own confirmation button. Reporting a no-show now happens directly from
+  the dialog itself (previously just a link to the ride page) and, once processed, shows a
+  follow-up prompt — "Driver reported as a no-show. Want to book another ride?" — rather than
+  leaving the rider with nothing after their trip is cancelled out from under them.
+- **Driver dashboard's scheduled-trip reminder now updates live, without a refresh** — a real
+  gap found while making the change above: only the rider side ever had a realtime
+  subscription; the driver side only ever fetched once on mount. A newly-accepted scheduled
+  ride, or any status change, wouldn't show up until the driver manually reloaded. Both sides
+  now subscribe.
 - **Open-requests count in the driver nav** — "Requests" now shows a live count in
   terracotta, e.g. "Requests (3)", on both the mobile bottom nav and the desktop tabs. A
   shared hook (`useOpenRequestsCount`) avoids duplicating the query across the two nav
@@ -686,9 +716,12 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
     `rides.driver_confirmed_arrival_at`, needed for the rider's side to actually know a driver
     has confirmed arrival on a scheduled trip (previously that confirmation was a pure UI
     navigation with nothing persisted at all).
-42. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
+42. Then run `supabase/migrations/041_driver_declaration.sql` — adds
+    `driver_profiles.declaration_accepted_at`, recording when a driver accepted the mandatory
+    legal declaration now required before verification submission.
+43. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
     for both ZA and ZW so the driver subscription page isn't empty).
-43. Go to Project Settings → API and copy:
+44. Go to Project Settings → API and copy:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ keep this secret — never expose it

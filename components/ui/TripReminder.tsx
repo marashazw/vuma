@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Ride } from "@/lib/types";
-import { CalendarClock, Bell, BellRing, Check, AlertTriangle, X, Loader2 } from "lucide-react";
+import { CalendarClock, Bell, BellRing, Check, AlertTriangle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useModal } from "@/components/ui/ModalProvider";
 
@@ -59,25 +59,42 @@ export function TripReminder({ role }: { role: "rider" | "driver" }) {
         .order("scheduled_at", { ascending: true });
       setUpcoming((data as Ride[]) || []);
 
-      // A rider should see a driver's arrival confirmation immediately,
-      // not only after their next full reload — that's the whole point
-      // of surfacing it as an urgent dialog rather than a routine banner.
-      if (role === "rider") {
-        const channel = supabase
-          .channel("rider-scheduled-arrival")
-          .on(
-            "postgres_changes",
-            { event: "UPDATE", schema: "public", table: "rides", filter: `rider_id=eq.${user.id}` },
-            (payload) => {
-              const updated = payload.new as Ride;
-              setUpcoming((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+      // Neither side should need a manual reload to see this update live —
+      // a driver's new scheduled acceptance, or a rider's driver confirming
+      // arrival, should both show up immediately.
+      const channel = supabase
+        .channel(`scheduled-trip-reminder-${role}-${Math.random().toString(36).slice(2)}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "rides", filter: `${column}=eq.${user.id}` },
+          async (payload) => {
+            if (payload.eventType === "DELETE") return;
+            const updated = payload.new as Ride;
+            // A row entering or leaving the relevant window (scheduled,
+            // accepted, within range) needs a full re-fetch rather than a
+            // simple in-place patch, since inserts/status-changes can add
+            // or remove rows from the list, not just update one already in it.
+            if (
+              updated.is_scheduled &&
+              updated.status === "accepted" &&
+              updated.scheduled_at &&
+              new Date(updated.scheduled_at).getTime() <= Date.now() + REMINDER_WINDOW_MS
+            ) {
+              setUpcoming((prev) => {
+                const exists = prev.some((r) => r.id === updated.id);
+                return exists ? prev.map((r) => (r.id === updated.id ? updated : r)) : [...prev, updated].sort(
+                  (a, b) => new Date(a.scheduled_at!).getTime() - new Date(b.scheduled_at!).getTime()
+                );
+              });
+            } else {
+              setUpcoming((prev) => prev.filter((r) => r.id !== updated.id));
             }
-          )
-          .subscribe();
-        return () => {
-          supabase.removeChannel(channel);
-        };
-      }
+          }
+        )
+        .subscribe();
+      return () => {
+        supabase.removeChannel(channel);
+      };
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role]);
@@ -110,17 +127,19 @@ export function TripReminder({ role }: { role: "rider" | "driver" }) {
     return () => timers.forEach((t) => t && clearTimeout(t));
   }, [notifPermission, upcoming]);
 
+  const [reportedNoShowFor, setReportedNoShowFor] = useState<string | null>(null);
+
   async function enableNotifications() {
     if (typeof window === "undefined" || !("Notification" in window)) return;
     const perm = await Notification.requestPermission();
     setNotifPermission(perm);
   }
 
-  async function cancelDisputedTrip(rideId: string, isNoShowReport: boolean) {
-    const confirmMessage = isNoShowReport
+  async function reportNoShow(rideId: string, driverClaimedArrival: boolean) {
+    const confirmMessage = driverClaimedArrival
       ? "Report your driver as a no-show? They said they'd arrived, but if they genuinely aren't there, this flags their account rather than yours."
-      : "Cancel this trip? Since your driver has already confirmed arrival, cancelling now may flag your account as a late cancellation.";
-    const ok = await modal.confirm(confirmMessage, { confirmLabel: isNoShowReport ? "Report no-show" : "Yes, cancel", danger: true });
+      : "Report your driver as a no-show? This flags their account, not yours.";
+    const ok = await modal.confirm(confirmMessage, { confirmLabel: "Report no-show", danger: true });
     if (!ok) return;
 
     setDisputeBusy(true);
@@ -128,12 +147,34 @@ export function TripReminder({ role }: { role: "rider" | "driver" }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        reason: isNoShowReport ? "Reported no-show despite driver's arrival confirmation" : "Rider cancelled after driver's arrival confirmation",
-        noShowReport: isNoShowReport,
+        reason: driverClaimedArrival ? "Reported no-show despite driver's arrival confirmation" : "Reported no-show after scheduled time passed",
+        noShowReport: true,
       }),
     });
     setDisputeBusy(false);
     setUpcoming((prev) => prev.filter((r) => r.id !== rideId));
+    // Rather than leaving the rider with nothing after their trip just got
+    // cancelled out from under them, this specific card switches to a
+    // direct path back into booking, instead of just disappearing.
+    setReportedNoShowFor(rideId);
+  }
+
+  if (reportedNoShowFor) {
+    return (
+      <div className="card p-4 bg-navy-800 text-white">
+        <div className="flex items-center gap-2.5 mb-3">
+          <AlertTriangle className="w-5 h-5 text-coral-400 shrink-0" />
+          <p className="text-sm font-semibold">Driver reported as a no-show</p>
+        </div>
+        <p className="text-xs text-navy-300 mb-3">That trip has been cancelled. Want to book another ride?</p>
+        <Link href="/rider" className="btn-primary w-full !text-sm text-center block mb-2">
+          Book another ride
+        </Link>
+        <button className="text-xs text-navy-400 underline w-full text-center" onClick={() => setReportedNoShowFor(null)}>
+          Not now
+        </button>
+      </div>
+    );
   }
 
   if (!upcoming.length) return null;
@@ -194,18 +235,9 @@ export function TripReminder({ role }: { role: "rider" | "driver" }) {
           <Link href={`/rider/rides/${soonest.id}`} className="btn-primary w-full !text-sm text-center block mb-2">
             <Check className="w-4 h-4 inline mr-1" /> Yes, they're here
           </Link>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              className="btn-ghost !text-sm !bg-transparent !text-navy-200 !border-navy-600"
-              disabled={disputeBusy}
-              onClick={() => cancelDisputedTrip(soonest.id, false)}
-            >
-              {disputeBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Cancel"}
-            </button>
-            <button className="btn-danger !text-sm" disabled={disputeBusy} onClick={() => cancelDisputedTrip(soonest.id, true)}>
-              {disputeBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Report no-show"}
-            </button>
-          </div>
+          <button className="btn-danger w-full !text-sm" disabled={disputeBusy} onClick={() => reportNoShow(soonest.id, true)}>
+            {disputeBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Report no-show"}
+          </button>
         </div>
       );
     }
@@ -213,7 +245,10 @@ export function TripReminder({ role }: { role: "rider" | "driver" }) {
     // Rider side: ask if the driver has arrived, escalating to a no-show
     // report option once genuinely past the grace period — matches the
     // same 10-minute threshold ScheduledCancelPanel itself uses for its
-    // own "report no-show" button, so the two stay consistent.
+    // own "report no-show" button, so the two stay consistent. No cancel
+    // option in either state — only confirm-arrived or report-no-show,
+    // since the driver may genuinely be there even past the grace period
+    // (they just never tapped their own confirmation).
     const pastGracePeriod = minutesPast >= NO_SHOW_REPORT_GRACE_MIN;
     return (
       <div className="card p-4 bg-navy-800 text-white">
@@ -225,14 +260,19 @@ export function TripReminder({ role }: { role: "rider" | "driver" }) {
           )}
           <p className="text-sm font-semibold">
             {pastGracePeriod
-              ? `Your driver hasn't arrived for ${soonest.dropoff_address.split(",")[0]}`
+              ? `Your driver hasn't confirmed arrival for ${soonest.dropoff_address.split(",")[0]}`
               : `Is your driver here for ${soonest.dropoff_address.split(",")[0]}?`}
           </p>
         </div>
         {pastGracePeriod ? (
-          <Link href={`/rider/rides/${soonest.id}`} className="btn-danger w-full !text-sm">
-            Report driver no-show
-          </Link>
+          <>
+            <Link href={`/rider/rides/${soonest.id}`} className="btn-primary w-full !text-sm text-center block mb-2">
+              <Check className="w-4 h-4 inline mr-1" /> Yes, they're here
+            </Link>
+            <button className="btn-danger w-full !text-sm" disabled={disputeBusy} onClick={() => reportNoShow(soonest.id, false)}>
+              {disputeBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Report no-show"}
+            </button>
+          </>
         ) : (
           <div className="grid grid-cols-2 gap-2">
             <button
