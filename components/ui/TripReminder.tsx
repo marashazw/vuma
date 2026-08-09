@@ -34,6 +34,7 @@ export function TripReminder({ role }: { role: "rider" | "driver" }) {
   // real Start Trip tap or the rider's real no-show report.
   const [notYetRideIds, setNotYetRideIds] = useState<Set<string>>(new Set());
   const [, forceTick] = useState(0);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined" && "Notification" in window) {
@@ -47,6 +48,7 @@ export function TripReminder({ role }: { role: "rider" | "driver" }) {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
+      setUserId(user.id);
       const column = role === "rider" ? "rider_id" : "driver_id";
       const { data } = await supabase
         .from("rides")
@@ -184,6 +186,45 @@ export function TripReminder({ role }: { role: "rider" | "driver" }) {
   const isPastScheduledTime = msUntil <= 0;
   const minutesPast = isPastScheduledTime ? Math.abs(msUntil) / 60000 : 0;
   const saidNotYet = notYetRideIds.has(soonest.id);
+
+  // A cancellation proposal is urgent enough to interrupt the normal
+  // countdown card entirely, at any point — not just once the scheduled
+  // time is close. Previously the only way to discover this was opening
+  // the ride detail page directly; there was no signal at all from the
+  // dashboard reminder, which is exactly the gap this closes.
+  if (soonest.scheduled_cancel_status === "proposed" && soonest.scheduled_cancel_proposed_by !== userId) {
+    return (
+      <Link
+        href={`/${role}/rides/${soonest.id}`}
+        className="card p-4 bg-coral-600 text-white flex items-center gap-3 block"
+      >
+        <AlertTriangle className="w-5 h-5 shrink-0 animate-pulse" />
+        <div className="min-w-0">
+          <p className="text-sm font-bold">Urgent: cancellation requested</p>
+          <p className="text-xs text-coral-50">
+            The {role === "rider" ? "driver" : "rider"} wants to cancel your trip to {soonest.dropoff_address.split(",")[0]}
+            — tap to review
+          </p>
+        </div>
+      </Link>
+    );
+  }
+  if (soonest.scheduled_cancel_status === "rejected" && soonest.scheduled_cancel_proposed_by === userId) {
+    return (
+      <Link
+        href={`/${role}/rides/${soonest.id}`}
+        className="card p-4 bg-coral-600 text-white flex items-center gap-3 block"
+      >
+        <AlertTriangle className="w-5 h-5 shrink-0 animate-pulse" />
+        <div className="min-w-0">
+          <p className="text-sm font-bold">Urgent: cancellation request declined</p>
+          <p className="text-xs text-coral-50">
+            Decide whether to proceed with the trip or cancel anyway — tap to review
+          </p>
+        </div>
+      </Link>
+    );
+  }
 
   // Once the scheduled time has actually arrived, the banner switches from
   // a countdown to an arrival-confirmation prompt — different for each

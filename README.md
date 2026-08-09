@@ -483,6 +483,12 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   cancel anyway"). Both sides already had realtime subscriptions filtered to their own ride,
   so whichever choice gets made reaches the other person's screen automatically — no separate
   notification mechanism needed.
+- **A cancellation proposal (or its rejection) is now impossible to miss from the dashboard**
+  — previously the only way to discover either was opening the specific ride's detail page
+  directly; the dashboard reminder gave no signal at all. Now interrupts the normal countdown
+  card entirely with a prominent red "Urgent: cancellation requested" (or "...declined") alert,
+  linking straight to the ride — checked and shown at any point in the countdown, not only
+  once the scheduled time is close, since a proposal can arrive at any time.
 - **Open-requests count in the driver nav** — "Requests" now shows a live count in
   terracotta, e.g. "Requests (3)", on both the mobile bottom nav and the desktop tabs. A
   shared hook (`useOpenRequestsCount`) avoids duplicating the query across the two nav
