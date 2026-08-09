@@ -16,6 +16,7 @@ const DOC_FIELDS: { key: keyof DriverProfile; label: string }[] = [
   { key: "license_document_path", label: "Driver's license" },
   { key: "vehicle_registration_path", label: "Vehicle registration" },
   { key: "profile_photo_path", label: "Profile photo" },
+  { key: "other_document_path", label: "Other (optional)" },
 ];
 
 export default function AdminDriverReviewPage({ params }: { params: Promise<{ id: string }> }) {

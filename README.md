@@ -657,9 +657,12 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
     manage). Also extends the `txn_type` enum with `tax_levy` and the driver wallet
     transaction check constraint with `tax_levy_deduction` — see the migration file for the
     full reasoning on why this is tracked separately from commission revenue.
-40. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
+40. Then run `supabase/migrations/039_driver_other_document.sql` — adds an optional "Other"
+    document upload slot to driver verification, for anything that doesn't fit the existing
+    required categories.
+41. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
     for both ZA and ZW so the driver subscription page isn't empty).
-41. Go to Project Settings → API and copy:
+42. Go to Project Settings → API and copy:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ keep this secret — never expose it

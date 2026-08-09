@@ -56,6 +56,7 @@ export interface DriverProfile {
   license_document_path: string | null;
   vehicle_registration_path: string | null;
   profile_photo_path: string | null;
+  other_document_path: string | null;
   submitted_at: string | null;
   rejection_reason: string | null;
   priority_until: string | null;

@@ -314,6 +314,14 @@ export default function DriverVerificationPage() {
           existingPath={profile.profile_photo_path}
           onUploaded={(path) => setPath("profile_photo_path", path)}
         />
+        <DocumentUploadRow
+          userId={userId!}
+          storageKey="other-document"
+          label="Other (optional)"
+          hint="Anything else worth including that doesn't fit the categories above."
+          existingPath={profile.other_document_path}
+          onUploaded={(path) => setPath("other_document_path", path)}
+        />
       </div>
 
       {profile.verification_status !== "verified" && (
