@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { StatCard } from "@/components/ui/StatCard";
 import { CreditBalanceCard } from "@/components/driver/CreditBalanceCard";
 import { currencyFormat } from "@/lib/commission";
-import { Wallet, TrendingUp, Percent, ShieldCheck, Gift, Zap } from "lucide-react";
+import { Wallet, TrendingUp, Percent, ShieldCheck, Gift, Zap, Landmark } from "lucide-react";
 import { format } from "date-fns";
 
 const BADGE_LABELS: Record<string, string> = {
@@ -26,11 +26,24 @@ export default async function DriverEarningsPage() {
     .order("created_at", { ascending: false })
     .limit(20);
 
-  const currency = txns?.[0]?.currency || "ZAR";
+  const { data: taxTxns } = await supabase
+    .from("transactions")
+    .select("amount, currency, charge_name")
+    .eq("driver_id", user?.id)
+    .eq("type", "tax_levy");
+
+  const currency = txns?.[0]?.currency || taxTxns?.[0]?.currency || "ZAR";
   const totalRides = txns?.length || 0;
   const avgCommissionPct = totalRides
     ? (txns!.reduce((s, t) => s + Number(t.commission_pct || 0), 0) / totalRides).toFixed(1)
     : "0";
+  const totalCommissionPaid = (txns || []).reduce((s, t) => s + Number(t.commission_amount || 0), 0);
+  const totalTaxLeviesPaid = (taxTxns || []).reduce((s, t) => s + Number(t.amount || 0), 0);
+  const taxLeviesByName: Record<string, number> = {};
+  (taxTxns || []).forEach((t) => {
+    const name = t.charge_name || "Unspecified charge";
+    taxLeviesByName[name] = (taxLeviesByName[name] || 0) + Number(t.amount);
+  });
 
   const badges: string[] = Array.isArray(driverProfile?.badges) ? driverProfile.badges : [];
   const isPriority = driverProfile?.priority_until && new Date(driverProfile.priority_until) > new Date();
@@ -55,6 +68,39 @@ export default async function DriverEarningsPage() {
           sub={`${driverProfile?.rating_count || 0} ratings`}
         />
       </div>
+
+      {(totalCommissionPaid > 0 || totalTaxLeviesPaid > 0) && (
+        <div className="card p-5">
+          <p className="label mb-3">Where your fares went</p>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-1.5 text-navy-500">
+                <Percent className="w-3.5 h-3.5" /> Commission
+              </span>
+              <span className="fare-figure font-semibold text-navy-700">{currencyFormat(totalCommissionPaid, currency)}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-1.5 text-navy-500">
+                <Landmark className="w-3.5 h-3.5" /> Taxes &amp; levies
+              </span>
+              <span className="fare-figure font-semibold text-navy-700">{currencyFormat(totalTaxLeviesPaid, currency)}</span>
+            </div>
+            {Object.keys(taxLeviesByName).length > 1 && (
+              <div className="pl-5 space-y-1 pt-1">
+                {Object.entries(taxLeviesByName).map(([name, amt]) => (
+                  <div key={name} className="flex items-center justify-between text-xs text-navy-400">
+                    <span>{name}</span>
+                    <span className="fare-figure">{currencyFormat(amt, currency)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-navy-400 mt-3">
+            Taxes and levies are collected on behalf of the relevant regulator, separate from Vuma's own commission.
+          </p>
+        </div>
+      )}
 
       {(isPriority || freeRideCredits > 0 || badges.length > 0) && (
         <div className="card p-5 space-y-3">
