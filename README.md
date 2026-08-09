@@ -363,6 +363,19 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   Income Statement's driver wallet aggregation. Replaced with the same separate-query-plus-JS-join
   pattern used there, and added `export const dynamic = "force-dynamic"` to the Overview
   page as cheap insurance against any caching masking a freshly-submitted application.
+- **"N drivers nearby" now shows profile pictures** — the rider request page's nearby-driver
+  badge previously showed only a count and an ETA estimate; it now shows a small stacked-avatar
+  row for the closest few (up to 5), with a generic person icon for any driver without a photo
+  on file. **A real access-control finding surfaced while building this**: a direct client
+  query for other drivers' name/avatar wouldn't have worked at all — `profiles` SELECT is
+  restricted to your own row, admin, or someone you already share an active ride with, and a
+  rider browsing nearby drivers happens *before* any ride exists, so none of those conditions
+  would be true. Rather than widen RLS to let any authenticated user read arbitrary profile
+  rows (which would expose far more than just a name and photo, since RLS grants or denies
+  whole rows, not individual columns), this uses a narrow server-side route
+  (`/api/drivers/public-info`) that returns only `full_name` and `avatar_url`, and only for
+  drivers it independently re-verifies are currently online and verified — not a general
+  "look up any user by id" tool.
 - **Basic rider lookup** (Admin → Riders) — previously there was no way to look up a rider at
   all beyond their name showing up in lists elsewhere; the fraud console's rider-side flags
   had nowhere to link to. Now a simple search (name, phone, email) leads to a detail page
