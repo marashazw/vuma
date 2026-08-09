@@ -8,6 +8,7 @@ import { BackToAdminBar } from "@/components/admin/BackToAdminBar";
 import { ConnectivityBanner } from "@/components/ui/ConnectivityBanner";
 import { SuspendedScreen } from "@/components/ui/SuspendedScreen";
 import { DriverNoticeRail } from "@/components/driver/DriverNoticeRail";
+import { RideSweepTrigger } from "@/components/ui/RideSweepTrigger";
 
 export default async function DriverLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -36,6 +37,7 @@ export default async function DriverLayout({ children }: { children: React.React
       {profile?.is_super_admin && <BackToAdminBar currentlyViewing="driver" />}
       <TopBar title="Driver" />
       <ConnectivityBanner />
+      <RideSweepTrigger />
       <DriverNavWithCount />
       <div className="flex justify-center gap-5">
         <aside className="hidden xl:block w-64 shrink-0 pt-6">

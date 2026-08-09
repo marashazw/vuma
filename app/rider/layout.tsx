@@ -6,6 +6,7 @@ import { RiderDesktopTabs } from "./desktop-tabs-client";
 import { BackToAdminBar } from "@/components/admin/BackToAdminBar";
 import { ConnectivityBanner } from "@/components/ui/ConnectivityBanner";
 import { SuspendedScreen } from "@/components/ui/SuspendedScreen";
+import { RideSweepTrigger } from "@/components/ui/RideSweepTrigger";
 
 export default async function RiderLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -33,6 +34,7 @@ export default async function RiderLayout({ children }: { children: React.ReactN
       {profile?.is_super_admin && <BackToAdminBar currentlyViewing="rider" />}
       <TopBar title="Rider" />
       <ConnectivityBanner />
+      <RideSweepTrigger />
       <RiderDesktopTabs />
       <main className="max-w-3xl mx-auto px-5 py-6">{children}</main>
       <BottomNavClient />
