@@ -365,8 +365,9 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   page as cheap insurance against any caching masking a freshly-submitted application.
 - **"N drivers nearby" now shows profile pictures** — the rider request page's nearby-driver
   badge previously showed only a count and an ETA estimate; it now shows a small stacked-avatar
-  row for the closest few (up to 5), with a generic person icon for any driver without a photo
-  on file. **A real access-control finding surfaced while building this**: a direct client
+  row for the closest few (up to 5) who actually have a photo on file — a driver without one is
+  simply skipped from the row rather than shown with a placeholder icon. **A real
+  access-control finding surfaced while building this**: a direct client
   query for other drivers' name/avatar wouldn't have worked at all — `profiles` SELECT is
   restricted to your own row, admin, or someone you already share an active ride with, and a
   rider browsing nearby drivers happens *before* any ride exists, so none of those conditions
@@ -376,6 +377,17 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   (`/api/drivers/public-info`) that returns only `full_name` and `avatar_url`, and only for
   drivers it independently re-verifies are currently online and verified — not a general
   "look up any user by id" tool.
+- **Pickup marker redesigned as a humanoid "hailing" badge, closer street-level zoom, and an
+  editable address badge on the map itself** — requested against a reference screenshot from
+  a competitor app. The pickup pin is now a black rounded badge with a white person-hailing
+  silhouette, connected by a stem to the precise coordinate below, replacing the previous plain
+  teardrop pin. The map's initial zoom now matches the street-level detail it was already
+  dynamically settling on once a pickup point exists (16–17), just without a brief flash at
+  the old, wider zoom on first render. A floating "Where from" card now sits directly on the
+  map showing the current pickup address — tapping it opens an inline text field to correct
+  the address text directly (e.g., adding a house number or landmark) without changing the
+  underlying pin location, separate from the existing drag-to-adjust and search-to-replace
+  options that were already there.
 - **Basic rider lookup** (Admin → Riders) — previously there was no way to look up a rider at
   all beyond their name showing up in lists elsewhere; the fraud console's rider-side flags
   had nowhere to link to. Now a simple search (name, phone, email) leads to a detail page

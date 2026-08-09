@@ -13,7 +13,7 @@ import { COUNTRIES } from "@/lib/constants";
 import type { CountryCode, FareSettings } from "@/lib/types";
 import { currencyFormat } from "@/lib/commission";
 import type { RideCredit } from "@/lib/types";
-import { Loader2, Navigation, Gift, Users, Wallet, Sparkles, X, Plus, CloudRain, Snowflake, Sun, CalendarClock } from "lucide-react";
+import { Loader2, Navigation, Gift, Users, Wallet, Sparkles, X, Plus, CloudRain, Snowflake, Sun, CalendarClock, Check, ChevronRight } from "lucide-react";
 
 const RideMap = dynamic(() => import("@/components/map/RideMap"), { ssr: false });
 
@@ -29,6 +29,8 @@ export default function RiderHomePage() {
 
   const [country, setCountry] = useState<CountryCode>("ZA");
   const [pickup, setPickup] = useState<Point | null>(null);
+  const [editingPickupLabel, setEditingPickupLabel] = useState(false);
+  const [pickupLabelDraft, setPickupLabelDraft] = useState("");
   const [dropoff, setDropoff] = useState<Point | null>(null);
   const [stops, setStops] = useState<Point[]>([]);
   const [offer, setOffer] = useState<number | "">("");
@@ -354,6 +356,59 @@ export default function RiderHomePage() {
               setDropoff({ label, lat, lng });
             }}
           />
+          {pickup && (
+            <div className="absolute top-3 left-3 right-3">
+              {editingPickupLabel ? (
+                <div className="bg-white rounded-xl shadow-lg p-3 flex items-center gap-2">
+                  <input
+                    autoFocus
+                    className="input flex-1 !py-2 text-sm"
+                    value={pickupLabelDraft}
+                    onChange={(e) => setPickupLabelDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setPickup({ ...pickup, label: pickupLabelDraft.trim() || pickup.label });
+                        setEditingPickupLabel(false);
+                      }
+                      if (e.key === "Escape") setEditingPickupLabel(false);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="w-8 h-8 rounded-lg bg-jade-500 text-white flex items-center justify-center shrink-0"
+                    onClick={() => {
+                      setPickup({ ...pickup, label: pickupLabelDraft.trim() || pickup.label });
+                      setEditingPickupLabel(false);
+                    }}
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    className="w-8 h-8 rounded-lg bg-navy-100 text-navy-500 flex items-center justify-center shrink-0"
+                    onClick={() => setEditingPickupLabel(false)}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="bg-white rounded-xl shadow-lg px-4 py-2.5 w-full text-left flex items-center justify-between gap-2"
+                  onClick={() => {
+                    setPickupLabelDraft(pickup.label);
+                    setEditingPickupLabel(true);
+                  }}
+                >
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-navy-400">Where from</p>
+                    <p className="text-sm font-semibold text-navy-800 truncate">{pickup.label}</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-navy-300 shrink-0" />
+                </button>
+              )}
+            </div>
+          )}
           {!pickup && (locating || locationError) && (
             <div className="absolute inset-x-0 bottom-0 bg-white/95 backdrop-blur px-4 py-2.5 flex items-center justify-between gap-2 text-sm">
               {locating ? (

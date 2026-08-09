@@ -20,7 +20,20 @@ function makeIcon(color: string) {
   });
 }
 
-const pickupIcon = makeIcon("#2BB673");
+const pickupIcon = L.divIcon({
+  className: "",
+  html: `<svg width="44" height="76" viewBox="0 0 44 76" xmlns="http://www.w3.org/2000/svg">
+    <rect x="2" y="0" width="40" height="40" rx="11" fill="#111827"/>
+    <circle cx="22" cy="13" r="4.5" fill="white"/>
+    <path d="M22 19c-4.5 0-7.8 3.4-7.8 8v2.5h13.4V27c0-2.7-1.1-5-2.8-6.6" fill="white"/>
+    <path d="M25.5 20.5l6-6.5" stroke="white" stroke-width="3" stroke-linecap="round"/>
+    <line x1="22" y1="40" x2="22" y2="64" stroke="#111827" stroke-width="2"/>
+    <circle cx="22" cy="68" r="6" fill="#2563EB" stroke="white" stroke-width="2.5"/>
+  </svg>`,
+  iconSize: [44, 76],
+  iconAnchor: [22, 68],
+  popupAnchor: [0, -68],
+});
 const dropoffIcon = makeIcon("#FF6B5A");
 const driverIcon = makeIcon("#F2A93B");
 const stopIcon = makeIcon("#2E4A72");
@@ -110,7 +123,7 @@ export default function RideMap({
 
   return (
     <div className={className} style={{ height: "100%", width: "100%", borderRadius: 20, overflow: "hidden" }}>
-      <MapContainer center={pickup} zoom={13} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
+      <MapContainer center={pickup} zoom={16} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
