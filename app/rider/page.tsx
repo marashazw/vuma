@@ -357,9 +357,9 @@ export default function RiderHomePage() {
             }}
           />
           {pickup && (
-            <div className="absolute top-3 left-3 right-3 z-[1000]">
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 w-[75%] max-w-[260px] z-[1000]">
               {editingPickupLabel ? (
-                <div className="bg-white rounded-xl shadow-lg p-3 flex items-center gap-2">
+                <div className="bg-white rounded-xl shadow-lg p-2 flex items-center gap-2">
                   <input
                     autoFocus
                     className="input flex-1 !py-2 text-sm"
@@ -394,17 +394,14 @@ export default function RiderHomePage() {
               ) : (
                 <button
                   type="button"
-                  className="bg-white rounded-xl shadow-lg px-4 py-2.5 w-full text-left flex items-center justify-between gap-2"
+                  className="bg-white rounded-xl shadow-lg px-3 py-1.5 w-full text-left flex items-center justify-between gap-2"
                   onClick={() => {
                     setPickupLabelDraft(pickup.label);
                     setEditingPickupLabel(true);
                   }}
                 >
-                  <div className="min-w-0">
-                    <p className="text-[11px] text-navy-400">Where from</p>
-                    <p className="text-sm font-semibold text-navy-800 truncate">{pickup.label}</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-navy-300 shrink-0" />
+                  <p className="text-xs font-semibold text-navy-800 truncate min-w-0">{pickup.label}</p>
+                  <ChevronRight className="w-3.5 h-3.5 text-navy-300 shrink-0" />
                 </button>
               )}
             </div>
