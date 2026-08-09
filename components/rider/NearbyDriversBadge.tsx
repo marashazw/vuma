@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { haversineKm } from "@/lib/geo";
-import { Car, Loader2, User } from "lucide-react";
+import { Car, Loader2 } from "lucide-react";
 
 const RADIUS_KM = 15;
 const MAX_AVATARS = 5;
@@ -100,24 +100,16 @@ export function NearbyDriversBadge({ pickup }: { pickup: { lat: number; lng: num
       ) : info && info.count > 0 ? (
         <>
           <div className="flex items-center -space-x-2 shrink-0">
-            {info.closest.map((d) =>
-              d.avatarUrl ? (
+            {info.closest
+              .filter((d) => d.avatarUrl)
+              .map((d) => (
                 <img
                   key={d.userId}
-                  src={d.avatarUrl}
+                  src={d.avatarUrl!}
                   alt={d.name}
                   className="w-6 h-6 rounded-full object-cover border-2 border-paper"
                 />
-              ) : (
-                <div
-                  key={d.userId}
-                  className="w-6 h-6 rounded-full bg-navy-100 border-2 border-paper flex items-center justify-center"
-                  title={d.name}
-                >
-                  <User className="w-3 h-3 text-navy-400" />
-                </div>
-              )
-            )}
+              ))}
           </div>
           <span>
             <strong className="text-navy-700">{info.count}</strong> driver{info.count > 1 ? "s" : ""} nearby, ~
