@@ -439,6 +439,13 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   disputing an arrival claim that doesn't match reality). Shown ahead of the normal 10-minute
   grace-period-gated prompt, since the driver has already made a specific, disputable claim
   worth letting the rider act on immediately rather than waiting out the usual window.
+- **Open-requests count in the driver nav** — "Requests" now shows a live count in
+  terracotta, e.g. "Requests (3)", on both the mobile bottom nav and the desktop tabs. A
+  shared hook (`useOpenRequestsCount`) avoids duplicating the query across the two nav
+  variants — a lightweight approximation (count of `requested`/`negotiating` rides in the
+  driver's own country) rather than replicating the dashboard's full seat-capacity/Deluxe
+  filtering, which matters for what's actually shown in the list but is more detail than a
+  nav badge needs.
 - **Basic rider lookup** (Admin → Riders) — previously there was no way to look up a rider at
   all beyond their name showing up in lists elsewhere; the fraud console's rider-side flags
   had nowhere to link to. Now a simple search (name, phone, email) leads to a detail page

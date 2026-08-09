@@ -9,7 +9,7 @@ import type { LucideIcon } from "lucide-react";
 export function DesktopTabs({
   items,
 }: {
-  items: { href: string; label: string; icon: LucideIcon; highlight?: boolean }[];
+  items: { href: string; label: string; icon: LucideIcon; highlight?: boolean; badge?: number }[];
 }) {
   const pathname = usePathname();
   return (
@@ -30,6 +30,7 @@ export function DesktopTabs({
             >
               {item.highlight && !active ? <NavNudgeRing size={22}>{iconEl}</NavNudgeRing> : iconEl}
               {item.label}
+              {!!item.badge && <span style={{ color: "#D97757" }}>&nbsp;({item.badge})</span>}
             </Link>
           );
         })}

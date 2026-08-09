@@ -9,7 +9,7 @@ import type { LucideIcon } from "lucide-react";
 export function BottomNav({
   items,
 }: {
-  items: { href: string; label: string; icon: LucideIcon; highlight?: boolean }[];
+  items: { href: string; label: string; icon: LucideIcon; highlight?: boolean; badge?: number }[];
 }) {
   const pathname = usePathname();
   return (
@@ -31,7 +31,10 @@ export function BottomNav({
             )}
           >
             {item.highlight && !active ? <NavNudgeRing size={28}>{iconEl}</NavNudgeRing> : iconEl}
-            {item.label}
+            <span>
+              {item.label}
+              {!!item.badge && <span style={{ color: "#D97757" }}> ({item.badge})</span>}
+            </span>
           </Link>
         );
       })}
