@@ -470,13 +470,12 @@ export default function DriverHomePage() {
                     <p className="font-semibold" style={{ color: "#B85C3E" }}>
                       Scheduled for{" "}
                       {r.scheduled_at &&
-                        new Date(r.scheduled_at).toLocaleString(undefined, {
-                          weekday: "short",
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        (() => {
+                          const d = new Date(r.scheduled_at);
+                          const time = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+                          const date = d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+                          return `${time}, ${date}`;
+                        })()}
                     </p>
                     <p className="text-xs text-navy-500 mt-1">
                       Cancelling within 1 hour of this time, or not showing up, flags your account. A second flag

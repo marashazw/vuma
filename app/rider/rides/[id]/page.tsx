@@ -526,7 +526,9 @@ export default function RiderRideDetailPage({ params }: { params: Promise<{ id: 
 
       {ride.status === "accepted" && (
         <div className="card p-5 text-center">
-          <p className="text-navy-500">Your driver is on the way. Fare agreed at</p>
+          <p className="text-navy-500">
+            {ride.is_scheduled ? "Your driver is confirmed. Fare agreed at" : "Your driver is on the way. Fare agreed at"}
+          </p>
           <p className="fare-figure text-2xl font-bold mt-1">{currencyFormat(Number(ride.final_fare), ride.currency)}</p>
           {ride.wallet_applied > 0 && (
             <p className="text-xs text-jade-600 mt-1">
@@ -544,17 +546,13 @@ export default function RiderRideDetailPage({ params }: { params: Promise<{ id: 
             // still be broadcasting from anywhere if they're online for
             // other reasons, not necessarily already heading to pickup.
             if (ride.is_scheduled && ride.scheduled_at) {
+              const d = new Date(ride.scheduled_at);
+              const time = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+              const date = d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
               return (
                 <div className="mt-4 flex items-center justify-center gap-2 text-navy-600 font-semibold">
                   <CalendarClock className="w-4 h-4" />
-                  Driver scheduled to arrive at{" "}
-                  {new Date(ride.scheduled_at).toLocaleString(undefined, {
-                    weekday: "short",
-                    day: "numeric",
-                    month: "short",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  Driver scheduled to arrive at {time}, {date}
                 </div>
               );
             }
