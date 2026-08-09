@@ -32,10 +32,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   if (!accept) {
-    await admin
-      .from("rides")
-      .update({ scheduled_cancel_status: "rejected", scheduled_cancel_proposed_by: null, scheduled_cancel_reason: null })
-      .eq("id", id);
+    await admin.from("rides").update({ scheduled_cancel_status: "rejected" }).eq("id", id);
     return NextResponse.json({ ok: true, accepted: false });
   }
 

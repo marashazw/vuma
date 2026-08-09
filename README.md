@@ -469,6 +469,20 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   subscription; the driver side only ever fetched once on mount. A newly-accepted scheduled
   ride, or any status change, wouldn't show up until the driver manually reloaded. Both sides
   now subscribe.
+- **Explicit outcome when a mutual-cancellation proposal is rejected, with a real choice
+  afterward** — previously a rejection was silent: the ride's `scheduled_cancel_status` just
+  flipped back and the proposer's screen quietly reverted to the normal panel, with no
+  message explaining what had happened or why. Now the proposer sees "The other side declined
+  your cancellation request" with two explicit options: **proceed with the trip** (resets
+  cleanly, no consequence to either side) or **cancel anyway** — which flags the cancelling
+  party's account regardless of how far in advance this happens, unlike an ordinary
+  cancellation, which only flags within the 1-hour lock window. Deliberately overriding an
+  explicit objection from the other side is treated differently from a routine early
+  cancellation with no disagreement attached to it. The other party sees their own
+  confirmation too ("You declined... the trip continues as scheduled, unless they decide to
+  cancel anyway"). Both sides already had realtime subscriptions filtered to their own ride,
+  so whichever choice gets made reaches the other person's screen automatically — no separate
+  notification mechanism needed.
 - **Open-requests count in the driver nav** — "Requests" now shows a live count in
   terracotta, e.g. "Requests (3)", on both the mobile bottom nav and the desktop tabs. A
   shared hook (`useOpenRequestsCount`) avoids duplicating the query across the two nav

@@ -14,7 +14,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
-  const { reason, noShowReport } = await req.json().catch(() => ({ reason: null, noShowReport: false }));
+  const { reason, noShowReport, forceFlag } = await req.json().catch(() => ({ reason: null, noShowReport: false, forceFlag: false }));
 
   const { data: ride } = await supabase
     .from("rides")
@@ -43,13 +43,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // 7-day suspension, not a permanent ban. no_show_penalty_charged is
   // reused here as a "strike already applied to this ride" guard, despite
   // its now-outdated name, to avoid double-striking if cancel is somehow
-  // called twice for the same ride.
+  // called twice for the same ride. forceFlag bypasses the lock-window
+  // check entirely — used when someone proposed a mutual cancellation,
+  // the other party explicitly rejected it, and they cancel anyway: that
+  // deliberate override of an explicit objection deserves a flag
+  // regardless of how far in advance it happens, unlike an ordinary
+  // early cancellation with no such disagreement attached to it.
   let strikeApplied = false;
   let suspensionApplied = false;
   if (ride.is_scheduled && ride.scheduled_at && ride.status === "accepted" && !ride.no_show_penalty_charged) {
     const withinLockWindow = new Date(ride.scheduled_at).getTime() - Date.now() <= LOCK_WINDOW_MS;
 
-    if ((isDriver || isRider) && withinLockWindow) {
+    if ((isDriver || isRider) && (withinLockWindow || forceFlag)) {
       strikeApplied = true;
       // A rider reporting a driver no-show strikes the driver, not
       // themselves — they aren't the one who committed the infraction.

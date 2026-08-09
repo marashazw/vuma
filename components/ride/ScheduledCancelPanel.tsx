@@ -37,8 +37,49 @@ export function ScheduledCancelPanel({
   // cancel (removed above), no report-no-show yet (still within grace).
   // TripReminder's own dashboard dialog already covers exactly this
   // window ("Is your driver here?"), so an empty-looking card here would
-  // be worse than not rendering at all.
-  if (!isDriver && pastScheduledTime && !pastGracePeriod) return null;
+  // be worse than not rendering at all. Exception: a rejected proposal
+  // they made themselves still needs resolving regardless of this
+  // window's timing — that choice shouldn't be suppressed just because
+  // it happens to coincide with it.
+  const hasRejectedProposalToResolve = ride.scheduled_cancel_status === "rejected" && isProposer;
+  if (!isDriver && pastScheduledTime && !pastGracePeriod && !hasRejectedProposalToResolve) return null;
+
+  async function acknowledgeRejection() {
+    setBusy(true);
+    const res = await fetch(`/api/rides/${ride.id}/acknowledge-rejection`, { method: "POST" });
+    setBusy(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      await modal.alert(`Could not proceed: ${data.error || "Unknown error"}`);
+      return;
+    }
+    await onUpdate();
+  }
+
+  async function cancelAnyway() {
+    const ok = await modal.confirm(
+      "The other side declined your cancellation request. Cancelling anyway will flag your account, regardless of how far in advance this is — deliberately overriding an explicit objection is treated differently from an ordinary cancellation. Are you sure?",
+      { confirmLabel: "Yes, cancel anyway", danger: true }
+    );
+    if (!ok) return;
+
+    setBusy(true);
+    const res = await fetch(`/api/rides/${ride.id}/cancel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reason: isDriver ? "Driver cancelled despite rider declining the cancellation proposal" : "Rider cancelled despite driver declining the cancellation proposal",
+        forceFlag: true,
+      }),
+    });
+    setBusy(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      await modal.alert(`Could not cancel: ${data.error || "Unknown error"}`);
+      return;
+    }
+    await onUpdate();
+  }
 
   async function proposeCancel() {
     if (!reason.trim()) return;
@@ -110,6 +151,34 @@ export function ScheduledCancelPanel({
       return;
     }
     await onUpdate();
+  }
+
+  if (ride.scheduled_cancel_status === "rejected" && isProposer) {
+    return (
+      <div className="card p-4 bg-coral-500/5 border-coral-500/20 space-y-3">
+        <p className="text-sm font-semibold text-coral-700 flex items-center gap-1.5">
+          <AlertTriangle className="w-4 h-4" /> {isDriver ? "The rider" : "The driver"} declined your cancellation request
+        </p>
+        <p className="text-xs text-navy-500">You can proceed with the trip as scheduled, or cancel anyway — which will flag your account.</p>
+        <div className="grid grid-cols-2 gap-3">
+          <button className="btn-ghost !text-sm !text-coral-600" disabled={busy} onClick={cancelAnyway}>
+            Cancel anyway
+          </button>
+          <button className="btn-primary !text-sm" disabled={busy} onClick={acknowledgeRejection}>
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Proceed with trip"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (ride.scheduled_cancel_status === "rejected" && !isProposer) {
+    return (
+      <div className="card p-4 bg-navy-50 text-sm text-navy-500">
+        You declined {isDriver ? "the rider's" : "the driver's"} cancellation request — the trip continues as
+        scheduled, unless {isDriver ? "the rider" : "the driver"} decides to cancel anyway.
+      </div>
+    );
   }
 
   if (ride.scheduled_cancel_status === "proposed" && !isProposer) {
