@@ -156,15 +156,15 @@ export async function resolveTaxLevies(
     .eq("country", country)
     .eq("is_active", true);
 
-  const breakdown = (charges || []).map((c: any) => {
+  const breakdown: { id: string; name: string; amount: number }[] = (charges || []).map((c: any) => {
     const amount =
       c.charge_kind === "percentage"
         ? Math.round(fare * (Number(c.rate || 0) / 100) * 100) / 100
         : Math.round(Number(c.flat_amount || 0) * 100) / 100;
-    return { id: c.id, name: c.name, amount };
+    return { id: c.id as string, name: c.name as string, amount };
   });
 
-  const total = Math.round(breakdown.reduce((sum, b) => sum + b.amount, 0) * 100) / 100;
+  const total = Math.round(breakdown.reduce((sum: number, b: { amount: number }) => sum + b.amount, 0) * 100) / 100;
   return { total, breakdown };
 }
 
