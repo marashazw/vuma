@@ -489,6 +489,23 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   card entirely with a prominent red "Urgent: cancellation requested" (or "...declined") alert,
   linking straight to the ride — checked and shown at any point in the countdown, not only
   once the scheduled time is close, since a proposal can arrive at any time.
+- **Fixed: an accepted scheduled ride neither party ever resolved could hold a driver's
+  commission reservation hostage forever** — found via a driver reporting a small amount
+  ("$0.42 held for upcoming scheduled trips") showing on their wallet with no scheduled trip
+  anywhere in their UI to explain it. The count-zero arrival-confirmation dialogs in
+  `TripReminder` are the intended way an accepted scheduled ride resolves once its time
+  arrives, but they only fire while someone is actually looking at the app — if neither the
+  rider nor the driver opens it around the scheduled time, nothing ever prompts a resolution,
+  and the ride just sits in `accepted` indefinitely, invisible to every UI (`TripReminder`
+  only shows trips within a 24-hour window) but still holding the driver's reservation.
+  `sweep-stale-negotiations` didn't cover this either — that one is specifically for a ride
+  that never got matched at all, a different problem. A new sweep
+  (`sweep-abandoned-scheduled`), called opportunistically the same way, auto-cancels and
+  releases the reservation for any accepted scheduled ride still unresolved 24 hours past its
+  scheduled time — a generous grace period, since this is a last-resort safety net, not the
+  primary resolution path. Runs platform-wide rather than per-user, so it should self-heal
+  any already-stuck reservation on the next dashboard load from anyone, not just the affected
+  driver.
 - **Open-requests count in the driver nav** — "Requests" now shows a live count in
   terracotta, e.g. "Requests (3)", on both the mobile bottom nav and the desktop tabs. A
   shared hook (`useOpenRequestsCount`) avoids duplicating the query across the two nav

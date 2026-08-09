@@ -58,6 +58,7 @@ export default function RiderHomePage() {
     // Best-effort, fire-and-forget — see the route for why this is a
     // sweep-on-normal-usage pattern rather than a scheduled cron job.
     fetch("/api/rides/sweep-stale-negotiations", { method: "POST" }).catch(() => {});
+    fetch("/api/rides/sweep-abandoned-scheduled", { method: "POST" }).catch(() => {});
 
     (async () => {
       const {

@@ -146,6 +146,7 @@ export default function DriverHomePage() {
 
   useEffect(() => {
     fetch("/api/rides/sweep-stale-negotiations", { method: "POST" }).catch(() => {});
+    fetch("/api/rides/sweep-abandoned-scheduled", { method: "POST" }).catch(() => {});
 
     (async () => {
       const {
