@@ -423,7 +423,22 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   "Due to regulator" section — money collected here isn't earned, it passes through the
   platform on behalf of a third party, and folding it into revenue (or even into the existing
   "outstanding liabilities" snapshot, which is a different kind of figure — a current balance,
-  not a period-collected flow) would have misstated both figures.
+  not a period-collected flow) would have misstated both figures. **Driver-facing
+  transparency**: Driver → Earnings now shows a "Where your fares went" breakdown — total
+  commission paid and total taxes/levies paid, shown as two separate figures rather than one
+  combined deduction, with a line-item breakdown by charge name when more than one is active.
+- **A driver's arrival confirmation on a scheduled trip now actually reaches the rider** —
+  previously a driver tapping "Yes, I'm here" was a pure UI navigation with nothing persisted
+  anywhere, meaning the rider's side had no way to know it had happened at all. Now written to
+  `rides.driver_confirmed_arrival_at`, with a realtime subscription so the rider sees it
+  immediately rather than only on their next reload. When this happens before the rider has
+  reciprocated, they're shown an immediate dialog — "Your driver says they've arrived — is
+  that right?" — with three options: confirm, cancel (a normal cancellation, which still
+  correctly flags the rider per the existing rules if they're simply changing their mind), or
+  report a no-show (which correctly flags the driver instead, since that's specifically for
+  disputing an arrival claim that doesn't match reality). Shown ahead of the normal 10-minute
+  grace-period-gated prompt, since the driver has already made a specific, disputable claim
+  worth letting the rider act on immediately rather than waiting out the usual window.
 - **Basic rider lookup** (Admin → Riders) — previously there was no way to look up a rider at
   all beyond their name showing up in lists elsewhere; the fraud console's rider-side flags
   had nowhere to link to. Now a simple search (name, phone, email) leads to a detail page
@@ -660,9 +675,13 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
 40. Then run `supabase/migrations/039_driver_other_document.sql` — adds an optional "Other"
     document upload slot to driver verification, for anything that doesn't fit the existing
     required categories.
-41. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
+41. Then run `supabase/migrations/040_driver_arrival_confirmation.sql` — adds
+    `rides.driver_confirmed_arrival_at`, needed for the rider's side to actually know a driver
+    has confirmed arrival on a scheduled trip (previously that confirmation was a pure UI
+    navigation with nothing persisted at all).
+42. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
     for both ZA and ZW so the driver subscription page isn't empty).
-42. Go to Project Settings → API and copy:
+43. Go to Project Settings → API and copy:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ keep this secret — never expose it

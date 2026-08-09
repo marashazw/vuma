@@ -136,6 +136,7 @@ export interface Ride {
   commission_reserved: number | null;
   tax_levy_charged: number | null;
   tax_levy_breakdown: { name: string; amount: number }[] | null;
+  driver_confirmed_arrival_at: string | null;
   driver_name_snapshot: string | null;
   vehicle_snapshot: string | null;
   plate_snapshot: string | null;

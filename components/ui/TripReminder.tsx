@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Ride } from "@/lib/types";
-import { CalendarClock, Bell, BellRing, Check, AlertTriangle } from "lucide-react";
+import { CalendarClock, Bell, BellRing, Check, AlertTriangle, X, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useModal } from "@/components/ui/ModalProvider";
 
 const REMINDER_WINDOW_MS = 24 * 60 * 60 * 1000; // show upcoming trips within 24h
 const LOCAL_NOTIFY_BEFORE_MS = 60 * 60 * 1000; // fire the local notification 1h before
@@ -23,7 +24,9 @@ function formatCountdown(ms: number): string {
 export function TripReminder({ role }: { role: "rider" | "driver" }) {
   const supabase = createClient();
   const router = useRouter();
+  const modal = useModal();
   const [upcoming, setUpcoming] = useState<Ride[]>([]);
+  const [disputeBusy, setDisputeBusy] = useState(false);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("default");
   // Tracks a "not yet" response per ride, purely to switch the copy from a
   // question to an acknowledgement — this is a local UI state, not written
@@ -55,6 +58,26 @@ export function TripReminder({ role }: { role: "rider" | "driver" }) {
         .lte("scheduled_at", new Date(Date.now() + REMINDER_WINDOW_MS).toISOString())
         .order("scheduled_at", { ascending: true });
       setUpcoming((data as Ride[]) || []);
+
+      // A rider should see a driver's arrival confirmation immediately,
+      // not only after their next full reload — that's the whole point
+      // of surfacing it as an urgent dialog rather than a routine banner.
+      if (role === "rider") {
+        const channel = supabase
+          .channel("rider-scheduled-arrival")
+          .on(
+            "postgres_changes",
+            { event: "UPDATE", schema: "public", table: "rides", filter: `rider_id=eq.${user.id}` },
+            (payload) => {
+              const updated = payload.new as Ride;
+              setUpcoming((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+            }
+          )
+          .subscribe();
+        return () => {
+          supabase.removeChannel(channel);
+        };
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role]);
@@ -93,6 +116,26 @@ export function TripReminder({ role }: { role: "rider" | "driver" }) {
     setNotifPermission(perm);
   }
 
+  async function cancelDisputedTrip(rideId: string, isNoShowReport: boolean) {
+    const confirmMessage = isNoShowReport
+      ? "Report your driver as a no-show? They said they'd arrived, but if they genuinely aren't there, this flags their account rather than yours."
+      : "Cancel this trip? Since your driver has already confirmed arrival, cancelling now may flag your account as a late cancellation.";
+    const ok = await modal.confirm(confirmMessage, { confirmLabel: isNoShowReport ? "Report no-show" : "Yes, cancel", danger: true });
+    if (!ok) return;
+
+    setDisputeBusy(true);
+    await fetch(`/api/rides/${rideId}/cancel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reason: isNoShowReport ? "Reported no-show despite driver's arrival confirmation" : "Rider cancelled after driver's arrival confirmation",
+        noShowReport: isNoShowReport,
+      }),
+    });
+    setDisputeBusy(false);
+    setUpcoming((prev) => prev.filter((r) => r.id !== rideId));
+  }
+
   if (!upcoming.length) return null;
 
   const soonest = upcoming[0];
@@ -119,11 +162,50 @@ export function TripReminder({ role }: { role: "rider" | "driver" }) {
             >
               Not yet
             </button>
-            <button className="btn-primary !text-sm" onClick={() => router.push(`/driver/rides/${soonest.id}`)}>
+            <button
+              className="btn-primary !text-sm"
+              onClick={async () => {
+                await supabase.from("rides").update({ driver_confirmed_arrival_at: new Date().toISOString() }).eq("id", soonest.id);
+                router.push(`/driver/rides/${soonest.id}`);
+              }}
+            >
               <Check className="w-4 h-4" /> Yes, I'm here
             </button>
           </div>
           {saidNotYet && <p className="text-xs text-navy-300 mt-2">No rush — let us know once you're there.</p>}
+        </div>
+      );
+    }
+
+    // Rider side: if the driver has explicitly confirmed arrival, that's
+    // a stronger, more specific signal than just "the scheduled time has
+    // passed" — surfaced immediately rather than waiting out the normal
+    // grace period, since the driver has already made a claim the rider
+    // may want to dispute right away (wrong location, mistaken tap, etc.)
+    if (soonest.driver_confirmed_arrival_at) {
+      return (
+        <div className="card p-4 bg-navy-800 text-white">
+          <div className="flex items-center gap-2.5 mb-3">
+            <AlertTriangle className="w-5 h-5 text-gold-400 shrink-0" />
+            <p className="text-sm font-semibold">
+              Your driver says they've arrived for {soonest.dropoff_address.split(",")[0]} — is that right?
+            </p>
+          </div>
+          <Link href={`/rider/rides/${soonest.id}`} className="btn-primary w-full !text-sm text-center block mb-2">
+            <Check className="w-4 h-4 inline mr-1" /> Yes, they're here
+          </Link>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              className="btn-ghost !text-sm !bg-transparent !text-navy-200 !border-navy-600"
+              disabled={disputeBusy}
+              onClick={() => cancelDisputedTrip(soonest.id, false)}
+            >
+              {disputeBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Cancel"}
+            </button>
+            <button className="btn-danger !text-sm" disabled={disputeBusy} onClick={() => cancelDisputedTrip(soonest.id, true)}>
+              {disputeBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Report no-show"}
+            </button>
+          </div>
         </div>
       );
     }
