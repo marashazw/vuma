@@ -133,6 +133,8 @@ export interface Ride {
   scheduled_cancel_reason: string | null;
   no_show_penalty_charged: boolean;
   commission_reserved: number | null;
+  tax_levy_charged: number | null;
+  tax_levy_breakdown: { name: string; amount: number }[] | null;
   driver_name_snapshot: string | null;
   vehicle_snapshot: string | null;
   plate_snapshot: string | null;
@@ -342,7 +344,8 @@ export type WalletTransactionType =
   | "no_show_penalty"
   | "admin_adjustment"
   | "subscription_payment"
-  | "wallet_applied_reimbursement";
+  | "wallet_applied_reimbursement"
+  | "tax_levy_deduction";
 
 export interface DriverWalletTransaction {
   id: string;
@@ -353,6 +356,19 @@ export interface DriverWalletTransaction {
   balance_after: number;
   notes: string | null;
   created_at: string;
+}
+
+export interface ChargeType {
+  id: string;
+  name: string;
+  country: CountryCode;
+  charge_kind: "percentage" | "flat";
+  rate: number | null;
+  flat_amount: number | null;
+  is_active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string | null;
 }
 
 export interface DriverNotice {

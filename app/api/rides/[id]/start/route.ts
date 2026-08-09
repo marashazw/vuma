@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { resolveFullCommission } from "@/lib/commission";
+import { resolveFullCommission, resolveTaxLevies } from "@/lib/commission";
 import type { CountryCode } from "@/lib/types";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -57,6 +57,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     fare
   );
 
+  // Deliberately independent of commission — applies "whether the driver
+  // is on per-ride commission or a periodic subscription" (an explicit
+  // requirement), so unlike commission there's no subscription exemption
+  // here at all.
+  const taxLevies = await resolveTaxLevies(admin, ride.country as CountryCode, fare);
+
   // Deduct from the driver's prepaid wallet — the actual fix for
   // commission previously only ever being *recorded* at completion, with
   // no real mechanism to collect it. Allowed to go negative here
@@ -70,7 +76,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .eq("user_id", ride.driver_id)
     .single();
   const balanceBefore = Number(driverProfile?.prepaid_wallet_balance || 0);
-  const balanceAfter = Math.round((balanceBefore - resolved.amount) * 100) / 100;
+  const totalDeduction = Math.round((resolved.amount + taxLevies.total) * 100) / 100;
+  const balanceAfter = Math.round((balanceBefore - totalDeduction) * 100) / 100;
 
   // If this was a scheduled ride, its expected commission was reserved at
   // acceptance to protect against the balance being spent elsewhere in
@@ -83,11 +90,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     ? Math.max(Number(driverProfile?.reserved_balance || 0) - Number(ride.commission_reserved), 0)
     : Number(driverProfile?.reserved_balance || 0);
 
-  if (resolved.amount > 0) {
+  if (totalDeduction > 0) {
     await admin
       .from("driver_profiles")
       .update({ prepaid_wallet_balance: balanceAfter, reserved_balance: newReserved })
       .eq("user_id", ride.driver_id);
+  } else if (ride.commission_reserved) {
+    // No deduction at all after all, but a reservation still needs releasing.
+    await admin.from("driver_profiles").update({ reserved_balance: newReserved }).eq("user_id", ride.driver_id);
+  }
+
+  if (resolved.amount > 0) {
     await admin.from("driver_wallet_transactions").insert({
       driver_id: ride.driver_id,
       ride_id: ride.id,
@@ -96,9 +109,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       balance_after: balanceAfter,
       notes: `Commission (${resolved.pct.toFixed(1)}%, ${resolved.source}) on ${ride.currency} ${fare.toFixed(2)} fare`,
     });
-  } else if (ride.commission_reserved) {
-    // No commission owed after all, but a reservation still needs releasing.
-    await admin.from("driver_profiles").update({ reserved_balance: newReserved }).eq("user_id", ride.driver_id);
+  }
+
+  // Each active charge gets its own wallet transaction row — a driver
+  // looking at their own history should see exactly which charge (VAT,
+  // a road levy, etc.) took what amount, not one opaque combined figure.
+  for (const charge of taxLevies.breakdown) {
+    if (charge.amount <= 0) continue;
+    await admin.from("driver_wallet_transactions").insert({
+      driver_id: ride.driver_id,
+      ride_id: ride.id,
+      type: "tax_levy_deduction",
+      amount: -charge.amount,
+      balance_after: balanceAfter,
+      notes: `${charge.name} on ${ride.currency} ${fare.toFixed(2)} fare`,
+    });
   }
 
   // This is what Admin → Transactions actually reads from — previously
@@ -121,6 +146,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     status: "success",
   });
 
+  // Tax/levy transactions are deliberately a separate type from
+  // ride_commission — this is not Vuma revenue, it's money collected on
+  // behalf of a regulator, and the Income Statement needs to be able to
+  // tell the two apart rather than misstating either figure.
+  for (const charge of taxLevies.breakdown) {
+    if (charge.amount <= 0) continue;
+    await admin.from("transactions").insert({
+      ride_id: rideId,
+      driver_id: ride.driver_id,
+      rider_id: ride.rider_id,
+      type: "tax_levy",
+      amount: charge.amount,
+      currency: ride.currency,
+      gateway: "ride",
+      charge_name: charge.name,
+      status: "success",
+    });
+  }
+
   const { error } = await admin
     .from("rides")
     .update({
@@ -128,6 +172,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       started_at: new Date().toISOString(),
       wallet_commission_charged: resolved.amount,
       wallet_commission_pct: resolved.pct,
+      tax_levy_charged: taxLevies.total,
+      tax_levy_breakdown: taxLevies.breakdown.map((b) => ({ name: b.name, amount: b.amount })),
     })
     .eq("id", rideId);
 
@@ -137,6 +183,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     ok: true,
     commissionCharged: resolved.amount,
     commissionPct: resolved.pct,
-    newWalletBalance: resolved.amount > 0 ? balanceAfter : balanceBefore,
+    taxLevyCharged: taxLevies.total,
+    taxLevyBreakdown: taxLevies.breakdown,
+    newWalletBalance: totalDeduction > 0 ? balanceAfter : balanceBefore,
   });
 }

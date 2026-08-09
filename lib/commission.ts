@@ -136,6 +136,38 @@ export function periodDays(period: "weekly" | "monthly" | "once_off"): number {
   return 36500; // "once_off" — effectively no expiry, admin cancels manually
 }
 
+/**
+ * Resolves every active tax/levy charge for a ride's country, applied to
+ * the fare. Deliberately independent of resolveCommissionPct/
+ * resolveFullCommission above — these charges apply "whether the driver
+ * is on per-ride commission or a periodic subscription" (an explicit
+ * requirement), so unlike commission there's no subscription exemption
+ * or override here at all. Each charge is either a percentage of the
+ * fare or a flat amount, admin-configured per country.
+ */
+export async function resolveTaxLevies(
+  admin: any,
+  country: CountryCode,
+  fare: number
+): Promise<{ total: number; breakdown: { id: string; name: string; amount: number }[] }> {
+  const { data: charges } = await admin
+    .from("charge_types")
+    .select("id, name, charge_kind, rate, flat_amount")
+    .eq("country", country)
+    .eq("is_active", true);
+
+  const breakdown = (charges || []).map((c: any) => {
+    const amount =
+      c.charge_kind === "percentage"
+        ? Math.round(fare * (Number(c.rate || 0) / 100) * 100) / 100
+        : Math.round(Number(c.flat_amount || 0) * 100) / 100;
+    return { id: c.id, name: c.name, amount };
+  });
+
+  const total = Math.round(breakdown.reduce((sum, b) => sum + b.amount, 0) * 100) / 100;
+  return { total, breakdown };
+}
+
 export function currencyFormat(amount: number, currency: string) {
   const symbol = currency === "ZAR" ? "R" : currency === "USD" ? "$" : currency;
   return `${symbol}${amount.toFixed(2)}`;

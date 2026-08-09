@@ -17,6 +17,8 @@ interface CurrencyFigures {
   commissionTotal: number;
   subscriptionRevenue: number;
   totalRevenue: number;
+  taxLeviesBySource: Record<string, number>;
+  taxLeviesTotal: number;
   driverWallets: number;
   unearnedSubscriptions: number;
   riderWallets: number;
@@ -67,7 +69,7 @@ export default function IncomeStatementPage() {
     // --- Revenue for the period ---
     const { data: txns } = await supabase
       .from("transactions")
-      .select("type, amount, commission_amount, commission_source, currency, status")
+      .select("type, amount, commission_amount, commission_source, charge_name, currency, status")
       .gte("created_at", from.toISOString())
       .lte("created_at", to.toISOString())
       .eq("status", "success");
@@ -83,6 +85,8 @@ export default function IncomeStatementPage() {
         commissionTotal: 0,
         subscriptionRevenue: 0,
         totalRevenue: 0,
+        taxLeviesBySource: {},
+        taxLeviesTotal: 0,
         driverWallets: 0,
         unearnedSubscriptions: 0,
         riderWallets: 0,
@@ -101,6 +105,15 @@ export default function IncomeStatementPage() {
       }
       if (t.type === "subscription_payment") {
         fig.subscriptionRevenue += Number(t.amount);
+      }
+      // Deliberately not added to totalRevenue below — this is money
+      // collected on behalf of a regulator, not Vuma's own income, and
+      // mixing it into revenue would overstate what the platform actually
+      // earned for the period.
+      if (t.type === "tax_levy") {
+        const name = t.charge_name || "Unspecified charge";
+        fig.taxLeviesBySource[name] = (fig.taxLeviesBySource[name] || 0) + Number(t.amount);
+        fig.taxLeviesTotal += Number(t.amount);
       }
     });
 
@@ -181,6 +194,15 @@ export default function IncomeStatementPage() {
       rows.push({ Section: "Revenue", Currency: f.currency, Line: "Commission total", Value: f.commissionTotal.toFixed(2) });
       rows.push({ Section: "Revenue", Currency: f.currency, Line: "Subscription revenue", Value: f.subscriptionRevenue.toFixed(2) });
       rows.push({ Section: "Revenue", Currency: f.currency, Line: "Total revenue", Value: f.totalRevenue.toFixed(2) });
+      Object.entries(f.taxLeviesBySource).forEach(([name, amt]) => {
+        rows.push({ Section: "Due to regulator (this period)", Currency: f.currency, Line: name, Value: amt.toFixed(2) });
+      });
+      rows.push({
+        Section: "Due to regulator (this period)",
+        Currency: f.currency,
+        Line: "Total taxes & levies collected",
+        Value: f.taxLeviesTotal.toFixed(2),
+      });
       rows.push({ Section: "Liabilities", Currency: f.currency, Line: "Driver prepaid wallets", Value: f.driverWallets.toFixed(2) });
       rows.push({ Section: "Liabilities", Currency: f.currency, Line: "Unearned subscriptions (pro-rated)", Value: f.unearnedSubscriptions.toFixed(2) });
       rows.push({ Section: "Liabilities", Currency: f.currency, Line: "Rider wallet balances", Value: f.riderWallets.toFixed(2) });
@@ -279,6 +301,27 @@ export default function IncomeStatementPage() {
                   </div>
                 </div>
               </div>
+
+              {f.taxLeviesTotal > 0 && (
+                <div>
+                  <p className="label mb-2 !text-gold-600">Due to regulator — {label}</p>
+                  <p className="text-xs text-navy-400 -mt-1 mb-2">
+                    Collected on behalf of a regulator, not Vuma's own revenue — excluded from the totals above.
+                  </p>
+                  <div className="space-y-1.5">
+                    {Object.entries(f.taxLeviesBySource).map(([name, amt]) => (
+                      <div key={name} className="flex justify-between text-sm text-navy-500">
+                        <span>{name}</span>
+                        <span className="fare-figure">{currencyFormat(amt, f.currency)}</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between font-bold text-navy-800 border-t border-navy-100 pt-2 mt-1">
+                      <span>Total taxes &amp; levies collected</span>
+                      <span className="fare-figure">{currencyFormat(f.taxLeviesTotal, f.currency)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <p className="label mb-2 !text-coral-600">Outstanding liabilities (as of now)</p>

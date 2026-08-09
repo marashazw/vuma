@@ -408,6 +408,22 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
   and deliberately dropped before shipping, reconsidered as likely too cluttered on a
   224px-tall map already carrying a route line, two markers, and a screen-edge effect — the
   editable search field covers dropoff and stops without that risk.
+- **Tax & levy charges** (Admin → Charges) — a generic, admin-managed system for deducting
+  regulatory charges (VAT, a road fund levy, a municipal levy — whatever becomes necessary,
+  not a single hardcoded field) from the driver on every ride, alongside commission. Each
+  charge is either a percentage of the fare or a flat amount, configured per country, and
+  toggleable active/inactive without deleting the historical record of what it was. Applies
+  unconditionally — deliberately independent of `resolveCommissionPct`/`resolveFullCommission`,
+  since the requirement is explicitly that this applies "whether the driver is on per-ride
+  commission or a periodic subscription," unlike commission itself which has subscription
+  exemptions built in. Deducted from the driver's prepaid wallet at trip-start, the same
+  moment and same atomic update as commission, with its own wallet transaction row per charge
+  so a driver's history clearly shows what each deduction was for. **On the Income
+  Statement**, this is deliberately kept separate from Vuma's own revenue and shown in its own
+  "Due to regulator" section — money collected here isn't earned, it passes through the
+  platform on behalf of a third party, and folding it into revenue (or even into the existing
+  "outstanding liabilities" snapshot, which is a different kind of figure — a current balance,
+  not a period-collected flow) would have misstated both figures.
 - **Basic rider lookup** (Admin → Riders) — previously there was no way to look up a rider at
   all beyond their name showing up in lists elsewhere; the fraud console's rider-side flags
   had nowhere to link to. Now a simple search (name, phone, email) leads to a detail page
@@ -636,9 +652,14 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
 38. Then run `supabase/migrations/037_wallet_topups_realtime.sql` — enables realtime on
     `driver_wallet_topups` (created in migration 027 but never added to the realtime
     publication), needed for the driver to be notified live when a top-up is approved.
-39. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
+39. Then run `supabase/migrations/038_tax_levy_charges.sql` — adds admin-configurable tax/levy
+    charges, deducted per ride from the driver alongside commission (Admin → Charges to
+    manage). Also extends the `txn_type` enum with `tax_levy` and the driver wallet
+    transaction check constraint with `tax_levy_deduction` — see the migration file for the
+    full reasoning on why this is tracked separately from commission revenue.
+40. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
     for both ZA and ZW so the driver subscription page isn't empty).
-40. Go to Project Settings → API and copy:
+41. Go to Project Settings → API and copy:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ keep this secret — never expose it

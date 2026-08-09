@@ -312,6 +312,8 @@ export default function DriverWalletPage() {
                       ? "Commission"
                       : t.type === "no_show_penalty"
                       ? "No-show / late cancellation penalty"
+                      : t.type === "tax_levy_deduction"
+                      ? t.notes || "Tax / levy"
                       : "Admin adjustment"}
                   </p>
                   <p className="text-xs text-navy-400">{format(new Date(t.created_at), "d MMM yyyy, HH:mm")}</p>
