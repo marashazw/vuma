@@ -357,7 +357,7 @@ export default function RiderHomePage() {
             }}
           />
           {pickup && (
-            <div className="absolute top-3 left-3 right-3">
+            <div className="absolute top-3 left-3 right-3 z-[1000]">
               {editingPickupLabel ? (
                 <div className="bg-white rounded-xl shadow-lg p-3 flex items-center gap-2">
                   <input

@@ -2,7 +2,7 @@
 
 import "leaflet/dist/leaflet.css";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import L from "leaflet";
 
 // Leaflet's default marker icons reference image paths that don't resolve
@@ -54,20 +54,52 @@ function FitBounds({
   followLiveLocation?: boolean;
 }) {
   const map = useMap();
+  // True once the rider has genuinely zoomed or dragged the map by hand.
+  // After that, live-location following should only recenter (panTo),
+  // never force the zoom back to a fixed level — that was the actual bug:
+  // every GPS tick called setView with a hardcoded zoom, silently undoing
+  // whatever zoom the rider had just manually chosen.
+  const userInteractedRef = useRef(false);
+  // Set right before this component's own map.setView/panTo calls, so the
+  // zoomstart/dragstart listener below can tell the difference between a
+  // real user gesture and a move this component triggered itself.
+  const programmaticMoveRef = useRef(false);
+
+  useEffect(() => {
+    const onUserGesture = () => {
+      if (!programmaticMoveRef.current) userInteractedRef.current = true;
+    };
+    map.on("zoomstart", onUserGesture);
+    map.on("dragstart", onUserGesture);
+    return () => {
+      map.off("zoomstart", onUserGesture);
+      map.off("dragstart", onUserGesture);
+    };
+  }, [map]);
 
   useEffect(() => {
     // Before a full route exists (still choosing where to go), keep the
-    // map tightly zoomed on and continuously following the rider's actual
-    // live GPS position — not a static snapshot — so it doesn't drift out
-    // of view as they move, especially important offline when only tiles
-    // near the current position are likely to be cached.
+    // map continuously following the rider's actual live GPS position —
+    // not a static snapshot — so it doesn't drift out of view as they
+    // move, especially important offline when only tiles near the
+    // current position are likely to be cached. Once the rider has
+    // manually zoomed, this only recenters (their zoom choice is
+    // preserved) rather than resetting it every time.
     if (followLiveLocation && liveLocation) {
-      map.setView(liveLocation, 17);
+      programmaticMoveRef.current = true;
+      if (userInteractedRef.current) {
+        map.panTo(liveLocation);
+      } else {
+        map.setView(liveLocation, 17);
+      }
+      setTimeout(() => {
+        programmaticMoveRef.current = false;
+      }, 0);
       return;
     }
     if (points.length >= 2) {
       map.fitBounds(points, { padding: [60, 60] });
-    } else if (points.length === 1) {
+    } else if (points.length === 1 && !userInteractedRef.current) {
       map.setView(points[0], 16);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
