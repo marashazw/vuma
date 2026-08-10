@@ -319,7 +319,6 @@ export default function RiderHomePage() {
         className="fixed inset-0 pointer-events-none z-40"
         style={{
           boxShadow: "inset 0 0 0 3px #D97757, inset 0 0 28px 6px rgba(217, 119, 87, 0.4)",
-          borderRadius: "12px",
         }}
       />
 
