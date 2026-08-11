@@ -23,7 +23,7 @@ export default function TermsPage() {
           NOTE FOR LEGAL REVIEWER — not rendered on the page, this comment
           only appears in source. See the accompanying note sent alongside
           this document for the full context on what specifically needs
-          review (Sections 3, 3a, and 7 especially).
+          review (Sections 3a, 3b, and 7 especially).
         */}
         <p>
           These terms govern your use of Vuma. By creating an account, you agree to them. Vuma is
@@ -43,7 +43,11 @@ export default function TermsPage() {
         <p>
           You must be at least 18 years old to use Vuma. Drivers must hold a valid driver's license,
           vehicle registration, and any permits required by local law, and must pass Vuma's verification
-          process before accepting rides.
+          process before accepting rides. As part of verification, a driver must affirmatively declare
+          that they are authorised by relevant legislation and authorities to operate a ride-hailing
+          service, that their vehicle is appropriately insured and certified, and that they will remain
+          in full compliance with local law at all times. Vuma is not accountable for a driver's actions
+          or omissions, including where a driver's declaration proves inaccurate.
         </p>
 
         <h2>3. Fares and payment</h2>
@@ -67,7 +71,18 @@ export default function TermsPage() {
           that credit on the driver's behalf.
         </p>
 
-        <h2>3a. Scheduled rides</h2>
+        <h2>3a. Taxes and levies</h2>
+        <p>
+          Where applicable, Vuma may collect taxes, levies, or similar regulatory charges on a ride, in
+          amounts and at rates set by Vuma from time to time to reflect obligations imposed by law or by
+          the relevant regulatory authority. These amounts are deducted from the driver's prepaid wallet
+          balance at the same time as commission and are <strong>not part of Vuma's own revenue</strong>
+          — they are collected and held on behalf of, and remitted to, the applicable regulator. This
+          applies to a ride regardless of whether the driver is on a per-ride commission arrangement or
+          an active subscription plan.
+        </p>
+
+        <h2>3b. Scheduled rides</h2>
         <p>
           Vuma allows a rider to book a ride for a specific future date and time ("scheduled ride")
           instead of immediately. Once a driver has accepted a scheduled ride, the following apply:
@@ -92,7 +107,16 @@ export default function TermsPage() {
           <li>
             Either party may instead propose cancelling by mutual agreement (for example, due to illness
             or a flight delay), stating a reason. If the other party accepts, the ride is cancelled with
-            no flag to either side.
+            no flag to either side. If the other party declines, the proposing party may either proceed
+            with the trip as scheduled, or cancel anyway — cancelling anyway after an explicit rejection
+            results in a flag regardless of how far in advance of the scheduled time this occurs, unlike
+            an ordinary cancellation, which is only flagged within the one-hour window described above.
+          </li>
+          <li>
+            Once the scheduled time is reached, either party may be asked to confirm that the other has
+            arrived, or to report that they have not. A report made in good faith that turns out to be
+            inaccurate does not, by itself, constitute a breach of these terms, but repeated or
+            apparently bad-faith reports may be treated as a violation of Section 4 below.
           </li>
         </ul>
         <p>
@@ -123,7 +147,11 @@ export default function TermsPage() {
         <p>
           We may use ratings, reports, and verification status to restrict, suspend, or remove access to
           the platform for either riders or drivers, at our discretion, to protect the safety and
-          integrity of the platform.
+          integrity of the platform. Separately from any automatic flag- or rating-based suspension,
+          Vuma may also place an account on temporary hold while investigating a specific concern,
+          stating a reason for the hold; this is not itself a finding of wrongdoing, and access is
+          restored once the investigation concludes unless a further suspension is warranted under this
+          section.
         </p>
 
         <h2>7. Limitation of liability</h2>
