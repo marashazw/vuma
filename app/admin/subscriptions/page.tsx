@@ -5,8 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { currencyFormat } from "@/lib/commission";
 import { COUNTRIES } from "@/lib/constants";
-import type { SubscriptionPlan, DriverSubscription, Profile, CountryCode, PaymentInstructions, ManualPaymentSubmission } from "@/lib/types";
-import { Loader2, Plus, Save, Check, X, Paperclip, ExternalLink } from "lucide-react";
+import type { SubscriptionPlan, DriverSubscription, Profile, CountryCode, PaymentInstructions, ManualPaymentSubmission, SubscriptionHolidayOffer } from "@/lib/types";
+import { Loader2, Plus, Save, Check, X, Paperclip, ExternalLink, Gift, Power } from "lucide-react";
 import { useModal } from "@/components/ui/ModalProvider";
 import { format } from "date-fns";
 
@@ -33,6 +33,10 @@ export default function AdminSubscriptionsPage() {
   const [rejectReasonId, setRejectReasonId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [proofUrls, setProofUrls] = useState<Record<string, string>>({});
+  const [holidayOffers, setHolidayOffers] = useState<(SubscriptionHolidayOffer & { plan?: SubscriptionPlan })[]>([]);
+  const [showHolidayForm, setShowHolidayForm] = useState(false);
+  const [holidayForm, setHolidayForm] = useState({ planId: "", durationDays: 7, claimWindowStartsAt: "", claimWindowEndsAt: "", note: "" });
+  const [submittingHoliday, setSubmittingHoliday] = useState(false);
 
   async function load() {
     const { data: plansData } = await supabase.from("subscription_plans").select("*").order("country");
@@ -58,6 +62,12 @@ export default function AdminSubscriptionsPage() {
     const map: Record<string, PaymentInstructions> = {};
     (instructionsData || []).forEach((i) => (map[i.country] = i as PaymentInstructions));
     setPaymentInstructions(map);
+
+    const { data: holidayData } = await supabase
+      .from("subscription_holiday_offers")
+      .select("*, plan:subscription_plans(*)")
+      .order("created_at", { ascending: false });
+    setHolidayOffers((holidayData as any) || []);
 
     const { data: manualData } = await supabase
       .from("manual_payment_submissions")
@@ -115,6 +125,43 @@ export default function AdminSubscriptionsPage() {
     setShowNewPlan(false);
     await load();
     setBusyId(null);
+  }
+
+  async function createHolidayOffer() {
+    if (!holidayForm.planId || !holidayForm.claimWindowStartsAt || !holidayForm.claimWindowEndsAt) return;
+    setSubmittingHoliday(true);
+    const res = await fetch("/api/admin/subscription-holidays/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        planId: holidayForm.planId,
+        durationDays: holidayForm.durationDays,
+        claimWindowStartsAt: new Date(holidayForm.claimWindowStartsAt).toISOString(),
+        claimWindowEndsAt: new Date(holidayForm.claimWindowEndsAt).toISOString(),
+        note: holidayForm.note || null,
+      }),
+    });
+    setSubmittingHoliday(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      await modal.alert(`Could not create offer: ${data.error || "Unknown error"}`);
+      return;
+    }
+    setHolidayForm({ planId: "", durationDays: 7, claimWindowStartsAt: "", claimWindowEndsAt: "", note: "" });
+    setShowHolidayForm(false);
+    await load();
+  }
+
+  async function toggleHolidayOffer(id: string) {
+    setBusyId(id);
+    const res = await fetch(`/api/admin/subscription-holidays/${id}/toggle`, { method: "POST" });
+    setBusyId(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      await modal.alert(`Could not update: ${data.error || "Unknown error"}`);
+      return;
+    }
+    await load();
   }
 
   async function savePaymentInstructions(country: CountryCode) {
@@ -351,6 +398,104 @@ export default function AdminSubscriptionsPage() {
               </div>
             );
           })}
+        </div>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <p className="label flex items-center gap-1.5">
+            <Gift className="w-3.5 h-3.5" /> Subscription holidays (Vuma Associates benefit)
+          </p>
+          <button className="btn-ghost !py-1.5 !px-2.5 !text-xs" onClick={() => setShowHolidayForm((s) => !s)}>
+            {showHolidayForm ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+        <p className="text-xs text-navy-400 -mt-2 mb-3">
+          A free period on a chosen plan, claimable only by active Vuma Associates members during the window below.
+        </p>
+
+        {showHolidayForm && (
+          <div className="card p-5 space-y-3 mb-3">
+            <div>
+              <label className="label block mb-1">Plan</label>
+              <select
+                className="input"
+                value={holidayForm.planId}
+                onChange={(e) => setHolidayForm((f) => ({ ...f, planId: e.target.value }))}
+              >
+                <option value="">Select a plan</option>
+                {plans.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({COUNTRIES[p.country as CountryCode]?.label})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label block mb-1">Free period (days)</label>
+              <input
+                type="number"
+                min="1"
+                className="input"
+                value={holidayForm.durationDays}
+                onChange={(e) => setHolidayForm((f) => ({ ...f, durationDays: Number(e.target.value) }))}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label block mb-1">Claimable from</label>
+                <input
+                  type="datetime-local"
+                  className="input"
+                  value={holidayForm.claimWindowStartsAt}
+                  onChange={(e) => setHolidayForm((f) => ({ ...f, claimWindowStartsAt: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="label block mb-1">Claimable until</label>
+                <input
+                  type="datetime-local"
+                  className="input"
+                  value={holidayForm.claimWindowEndsAt}
+                  onChange={(e) => setHolidayForm((f) => ({ ...f, claimWindowEndsAt: e.target.value }))}
+                />
+              </div>
+            </div>
+            <input
+              className="input"
+              placeholder="Note (optional, internal only)"
+              value={holidayForm.note}
+              onChange={(e) => setHolidayForm((f) => ({ ...f, note: e.target.value }))}
+            />
+            <button className="btn-primary w-full" disabled={submittingHoliday} onClick={createHolidayOffer}>
+              {submittingHoliday ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create offer"}
+            </button>
+          </div>
+        )}
+
+        {!holidayOffers.length && <p className="text-navy-400 text-sm">No subscription holidays configured.</p>}
+        <div className="space-y-2">
+          {holidayOffers.map((o) => (
+            <div key={o.id} className={`card p-4 flex items-center justify-between gap-3 ${!o.is_active ? "opacity-50" : ""}`}>
+              <div className="min-w-0">
+                <p className="font-semibold text-sm text-navy-800">
+                  {o.duration_days} days free on {o.plan?.name}
+                </p>
+                <p className="text-xs text-navy-400 mt-0.5">
+                  Claimable {format(new Date(o.claim_window_starts_at), "d MMM, HH:mm")} –{" "}
+                  {format(new Date(o.claim_window_ends_at), "d MMM, HH:mm")}
+                </p>
+                {o.note && <p className="text-xs text-navy-400 mt-0.5">{o.note}</p>}
+              </div>
+              <button
+                className={`btn-ghost !py-1.5 !px-2.5 text-xs shrink-0 ${o.is_active ? "!text-coral-600" : "!text-jade-600"}`}
+                disabled={busyId === o.id}
+                onClick={() => toggleHolidayOffer(o.id)}
+              >
+                <Power className="w-3.5 h-3.5" /> {o.is_active ? "Deactivate" : "Activate"}
+              </button>
+            </div>
+          ))}
         </div>
       </div>
 

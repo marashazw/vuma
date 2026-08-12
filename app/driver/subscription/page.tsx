@@ -10,8 +10,9 @@ import type {
   CountryCode,
   PaymentInstructions,
   ManualPaymentSubmission,
+  SubscriptionHolidayOffer,
 } from "@/lib/types";
-import { Loader2, CheckCircle2, Smartphone, CreditCard, Landmark, Clock, XCircle, Gift, Upload, ExternalLink, Paperclip, X, Wallet } from "lucide-react";
+import { Loader2, CheckCircle2, Smartphone, CreditCard, Landmark, Clock, XCircle, Gift, Upload, ExternalLink, Paperclip, X, Wallet, Users } from "lucide-react";
 import { useModal } from "@/components/ui/ModalProvider";
 import { format } from "date-fns";
 
@@ -47,6 +48,9 @@ function DriverSubscriptionInner() {
   const [walletBalance, setWalletBalance] = useState(0);
   const [spendingWallet, setSpendingWallet] = useState<string | null>(null);
   const [showAltPayment, setShowAltPayment] = useState<string | null>(null);
+  const [membershipStatus, setMembershipStatus] = useState<string | null>(null);
+  const [holidayOffers, setHolidayOffers] = useState<(SubscriptionHolidayOffer & { plan?: SubscriptionPlan })[]>([]);
+  const [claimingId, setClaimingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (searchParams.get("success")) setNotice("Subscription activated!");
@@ -79,7 +83,7 @@ function DriverSubscriptionInner() {
       .from("driver_subscriptions")
       .select("*, plan:subscription_plans(*)")
       .eq("driver_id", user.id)
-      .eq("status", "active")
+      .in("status", ["active", "waived"])
       .gte("ends_at", new Date().toISOString())
       .order("created_at", { ascending: false })
       .limit(1)
@@ -104,6 +108,29 @@ function DriverSubscriptionInner() {
     setCreditBalance(Number(driverProfile?.credit_balance) || 0);
     setWalletBalance(Number(driverProfile?.prepaid_wallet_balance) || 0);
 
+    const { data: membership } = await supabase
+      .from("vuma_associates_memberships")
+      .select("status")
+      .eq("profile_id", user.id)
+      .maybeSingle();
+    setMembershipStatus(membership?.status || null);
+
+    const now = new Date().toISOString();
+    const { data: offers } = await supabase
+      .from("subscription_holiday_offers")
+      .select("*, plan:subscription_plans(*)")
+      .eq("is_active", true)
+      .lte("claim_window_starts_at", now)
+      .gte("claim_window_ends_at", now);
+    const eligibleOffers = (offers || []).filter((o: any) => o.plan?.country === c);
+
+    const { data: myClaims } = await supabase
+      .from("subscription_holiday_claims")
+      .select("offer_id")
+      .eq("driver_id", user.id);
+    const claimedIds = new Set((myClaims || []).map((c) => c.offer_id));
+    setHolidayOffers((eligibleOffers as any).filter((o: any) => !claimedIds.has(o.id)));
+
     setLoading(false);
   }
 
@@ -111,6 +138,23 @@ function DriverSubscriptionInner() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function claimHoliday(offerId: string) {
+    setClaimingId(offerId);
+    const res = await fetch("/api/driver/claim-subscription-holiday", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ offerId }),
+    });
+    const data = await res.json();
+    setClaimingId(null);
+    if (!res.ok) {
+      await modal.alert(`Could not claim: ${data.error || "Unknown error"}`);
+      return;
+    }
+    setNotice("Subscription holiday claimed — enjoy the free period!");
+    await load();
+  }
 
   async function purchase(plan: SubscriptionPlan, gateway: "payfast" | "paynow") {
     setPurchasingId(plan.id);
@@ -257,6 +301,42 @@ function DriverSubscriptionInner() {
         <p className="text-navy-400 text-sm">
           No active subscription — you&rsquo;re on standard per-ride commission. Subscribe below for a flat periodic rate instead.
         </p>
+      )}
+
+      {holidayOffers.length > 0 && membershipStatus === "active" && (
+        <div className="space-y-2">
+          {holidayOffers.map((offer) => (
+            <div key={offer.id} className="card p-5 bg-gold-50 border-gold-200">
+              <p className="text-sm font-semibold text-gold-700 flex items-center gap-1.5">
+                <Gift className="w-4 h-4" /> Subscription holiday — {offer.duration_days} days free on {offer.plan?.name}
+              </p>
+              <p className="text-xs text-navy-500 mt-1 mb-3">
+                A Vuma Associates member benefit. Claimable until {format(new Date(offer.claim_window_ends_at), "d MMM yyyy, HH:mm")}.
+              </p>
+              <button className="btn-primary w-full !text-sm" disabled={claimingId === offer.id} onClick={() => claimHoliday(offer.id)}>
+                {claimingId === offer.id ? <Loader2 className="w-4 h-4 animate-spin" /> : "Claim free period"}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {holidayOffers.length > 0 && membershipStatus !== "active" && (
+        <div className="card p-5 bg-navy-50">
+          <p className="text-sm font-semibold text-navy-700 flex items-center gap-1.5">
+            <Users className="w-4 h-4" /> A subscription holiday is available right now
+          </p>
+          <p className="text-xs text-navy-500 mt-1 mb-3">
+            {membershipStatus === "pending"
+              ? "This is a Vuma Associates member benefit — yours is awaiting confirmation, and you'll be able to claim it once active."
+              : "This is a Vuma Associates member benefit. Join to claim a free subscription period."}
+          </p>
+          {!membershipStatus && (
+            <a href="/vuma-associates/constitution" className="btn-primary w-full !text-sm text-center block">
+              Learn about Vuma Associates
+            </a>
+          )}
+        </div>
       )}
 
       {pendingManual.filter((m) => m.status === "pending").map((m) => (

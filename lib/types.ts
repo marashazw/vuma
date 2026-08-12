@@ -400,6 +400,26 @@ export interface RiderWalletTopup {
   created_at: string;
 }
 
+export interface SubscriptionHolidayOffer {
+  id: string;
+  plan_id: string;
+  duration_days: number;
+  claim_window_starts_at: string;
+  claim_window_ends_at: string;
+  is_active: boolean;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface SubscriptionHolidayClaim {
+  id: string;
+  offer_id: string;
+  driver_id: string;
+  driver_subscription_id: string | null;
+  claimed_at: string;
+}
+
 export interface ChargeType {
   id: string;
   name: string;

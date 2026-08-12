@@ -760,9 +760,12 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
     system: membership records, time-windowed ride-access restrictions, global settings, and a
     new rider wallet top-up mechanism. See the migration file and the feature description below
     for the full reasoning.
-44. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
+44. Then run `supabase/migrations/043_subscription_holidays.sql` — subscription holiday offers,
+    a Vuma Associates member benefit: admin creates a time-windowed free-subscription-period
+    offer on a chosen plan, claimable only by active members.
+45. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
     for both ZA and ZW so the driver subscription page isn't empty).
-45. Go to Project Settings → API and copy:
+46. Go to Project Settings → API and copy:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ keep this secret — never expose it
@@ -1091,6 +1094,23 @@ simplified and should be hardened before handling real money and real users at s
     and shows the appropriate action: join directly if logged in with no membership yet, a
     clear "awaiting confirmation" or "you're an active member" state if one already exists, or
     a prompt to sign up/log in first if visiting while logged out.
+  - **Subscription holidays** (Driver → Plan; Admin → Subscriptions): a further member
+    benefit — admin creates a time-windowed offer on a chosen plan ("7 days free on the Weekly
+    plan, claimable until [date]"), and only active members can claim it. Built directly on
+    the existing `driver_subscriptions` mechanism (which already had `amount_paid` and
+    `waived_by`/`waived_reason` — a concept for "granted for free" already existed, this
+    reuses it) rather than a parallel system, so a claimed holiday automatically feeds into
+    every existing "has active subscription" check — commission resolution, bid gating —
+    with zero duplicated logic. A driver who isn't yet a member still sees that a holiday is
+    available, with a link to join, rather than the offer being invisible to them entirely.
+    **Found and fixed a real pre-existing bug while wiring this up**: the driver subscription
+    page's own "what's my active plan" query only ever checked `status = 'active'`, never
+    `'waived'` — even though an existing, separate admin capability
+    (`/api/admin/subscriptions/[id]/waive`) could already grant a driver a free subscription
+    with exactly that status. Any driver who'd ever had a subscription manually waived by
+    admin would have seen no reflection of it on their own subscription page at all, despite
+    it correctly reducing their commission behind the scenes the whole time. Fixed to match
+    the status check the commission-resolution logic already used correctly.
 
 ## Publishing to Google Play Store
 
