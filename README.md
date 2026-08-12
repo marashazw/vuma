@@ -1084,7 +1084,13 @@ simplified and should be hardened before handling real money and real users at s
   - The constitution itself is a genuine starting draft, not a bare template, but — like the
     Terms of Service — uses `[REPLACE: ...]` markers wherever a real decision (governance
     structure, the amendment/re-acceptance process) needs sign-off before publishing, rather
-    than guessing at specifics that weren't specified.
+    than guessing at specifics that weren't specified. **Updated in a later round**: the
+    standalone constitution page (`/vuma-associates/constitution`) was originally read-only —
+    linked from several places as "Learn about Vuma Associates," but with no way to actually
+    join from there. Now a client component that checks the visitor's own membership status
+    and shows the appropriate action: join directly if logged in with no membership yet, a
+    clear "awaiting confirmation" or "you're an active member" state if one already exists, or
+    a prompt to sign up/log in first if visiting while logged out.
 
 ## Publishing to Google Play Store
 
