@@ -57,9 +57,8 @@ export function ConstitutionContent() {
       <p>
         Vuma administers Vuma Associates, including approving membership, confirming paid-up status,
         and deciding when and how any member-restricted access (such as a members-only period for
-        certain rides) applies. [REPLACE: describe here whether any member body, committee, or elected
-        representation exists or is planned, or confirm that governance remains fully with Vuma for
-        now.]
+        certain rides) applies. Governance of Vuma Associates rests fully with Vuma; no separate
+        member body, committee, or elected representation currently exists.
       </p>
 
       <h2>6. Suspension and termination of membership</h2>
@@ -74,8 +73,7 @@ export function ConstitutionContent() {
       <p>
         Vuma may amend this constitution from time to time. A new version takes effect for new members
         upon publication; existing members will be asked to accept a materially changed version before
-        continuing to receive member benefits. [REPLACE: confirm this amendment/re-acceptance process
-        is adequate, or specify a different notice period or mechanism.]
+        continuing to receive member benefits.
       </p>
 
       <h2>8. Acceptance</h2>
