@@ -763,9 +763,12 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
 44. Then run `supabase/migrations/043_subscription_holidays.sql` — subscription holiday offers,
     a Vuma Associates member benefit: admin creates a time-windowed free-subscription-period
     offer on a chosen plan, claimable only by active members.
-45. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
+45. Then run `supabase/migrations/044_require_verification_for_topup.sql` — tightens the wallet
+    top-up insert policy to require an actually-verified driver, at the database level, not
+    just hidden in the UI.
+46. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
     for both ZA and ZW so the driver subscription page isn't empty).
-46. Go to Project Settings → API and copy:
+47. Go to Project Settings → API and copy:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ keep this secret — never expose it
@@ -1126,6 +1129,20 @@ simplified and should be hardened before handling real money and real users at s
     full reassurance when membership genuinely isn't required for that role, or a specific
     "joining is currently required to complete driver registration" note when it is. Riders
     are never affected by this setting, so they always see the full reassurance.
+- **Driver dashboard's "verification pending" message now only shows once genuinely
+  submitted** — `verification_status` defaults to `'pending'` for every brand-new driver
+  signup, before they've uploaded a single document, so the card was telling drivers who'd
+  never touched the verification page that "an admin is reviewing your documents." Now also
+  checks `submitted_at` (already fetched, wasn't being used) — only a genuinely-submitted
+  driver sees the review message; anyone else sees a prompt pointing them to actually
+  complete it.
+- **Unverified drivers can no longer submit a wallet top-up** — previously there was no check
+  at all, neither in the UI nor at the database level; any authenticated driver, verified or
+  not, could submit a top-up request. Fixed in both places: the RLS insert policy on
+  `driver_wallet_topups` now requires `verification_status = 'verified'` (migration 044), and
+  the wallet page itself replaces the top-up form with an explanation and a link to
+  verification when it isn't. The database check is the actual enforcement boundary — the UI
+  change alone would only have hidden the form, not prevented a direct request.
 
 ## Publishing to Google Play Store
 

@@ -23,6 +23,7 @@ export default function DriverWalletPage() {
   const [lowBalance, setLowBalance] = useState<LowBalanceCheck | null>(null);
   const [transactions, setTransactions] = useState<DriverWalletTransaction[]>([]);
   const [pendingTopups, setPendingTopups] = useState<DriverWalletTopup[]>([]);
+  const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
 
   const [amount, setAmount] = useState<number | "">("");
   const [referenceCode, setReferenceCode] = useState("");
@@ -43,13 +44,14 @@ export default function DriverWalletPage() {
 
     const { data: driverProfile } = await supabase
       .from("driver_profiles")
-      .select("prepaid_wallet_balance, reserved_balance")
+      .select("prepaid_wallet_balance, reserved_balance, verification_status")
       .eq("user_id", user.id)
       .single();
     const currentBalance = Number(driverProfile?.prepaid_wallet_balance) || 0;
     const currentReserved = Number(driverProfile?.reserved_balance) || 0;
     setBalance(currentBalance);
     setReservedBalance(currentReserved);
+    setVerificationStatus(driverProfile?.verification_status || null);
     setLowBalance(await checkLowBalance(supabase, user.id, currentBalance - currentReserved));
 
     const { data: txData } = await supabase
@@ -228,69 +230,83 @@ export default function DriverWalletPage() {
         </div>
       ))}
 
-      <div className="card p-5 space-y-3">
-        <p className="label">Top up your wallet</p>
-        <div>
-          <label className="label block mb-1">Amount ({cfg.currencySymbol})</label>
-          <input
-            type="number"
-            min={1}
-            className="input"
-            placeholder="e.g. 20"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value === "" ? "" : Number(e.target.value))}
-          />
-        </div>
-        <input
-          className="input"
-          placeholder="Payment reference/confirmation code (optional if uploading proof)"
-          value={referenceCode}
-          onChange={(e) => setReferenceCode(e.target.value)}
-        />
-        {!proofFile ? (
-          <label className="btn-primary w-full cursor-pointer">
-            <Upload className="w-4 h-4" /> Upload proof of payment (screenshot or PDF)
+      {verificationStatus === "verified" ? (
+        <div className="card p-5 space-y-3">
+          <p className="label">Top up your wallet</p>
+          <div>
+            <label className="label block mb-1">Amount ({cfg.currencySymbol})</label>
             <input
-              type="file"
-              accept="image/*,application/pdf"
-              className="hidden"
-              onChange={(e) => setProofFile(e.target.files?.[0] || null)}
+              type="number"
+              min={1}
+              className="input"
+              placeholder="e.g. 20"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value === "" ? "" : Number(e.target.value))}
             />
-          </label>
-        ) : (
-          <div className="flex items-center justify-between text-sm bg-navy-50 rounded-lg px-3 py-2">
-            <span className="flex items-center gap-1.5 text-navy-600 truncate">
-              <Paperclip className="w-3.5 h-3.5 shrink-0" /> {proofFile.name}
-            </span>
-            <button onClick={() => setProofFile(null)}>
-              <X className="w-3.5 h-3.5 text-navy-400" />
-            </button>
           </div>
-        )}
-
-        <label className="flex items-start gap-2.5 cursor-pointer bg-navy-50 rounded-lg px-3 py-2.5">
           <input
-            type="checkbox"
-            className="w-4 h-4 mt-0.5 shrink-0 accent-gold-400"
-            checked={consented}
-            onChange={(e) => setConsented(e.target.checked)}
+            className="input"
+            placeholder="Payment reference/confirmation code (optional if uploading proof)"
+            value={referenceCode}
+            onChange={(e) => setReferenceCode(e.target.value)}
           />
-          <span className="text-xs text-navy-600">
-            I agree that this deposit will not be refundable and will only be applied towards ride commissions
-            and subscriptions.
-          </span>
-        </label>
+          {!proofFile ? (
+            <label className="btn-primary w-full cursor-pointer">
+              <Upload className="w-4 h-4" /> Upload proof of payment (screenshot or PDF)
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={(e) => setProofFile(e.target.files?.[0] || null)}
+              />
+            </label>
+          ) : (
+            <div className="flex items-center justify-between text-sm bg-navy-50 rounded-lg px-3 py-2">
+              <span className="flex items-center gap-1.5 text-navy-600 truncate">
+                <Paperclip className="w-3.5 h-3.5 shrink-0" /> {proofFile.name}
+              </span>
+              <button onClick={() => setProofFile(null)}>
+                <X className="w-3.5 h-3.5 text-navy-400" />
+              </button>
+            </div>
+          )}
 
-        <button
-          className="btn-primary w-full"
-          disabled={submitting || !amount || Number(amount) <= 0 || !consented}
-          onClick={submitTopup}
-        >
-          {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-          {uploading ? "Uploading proof…" : submitting ? "Submitting…" : "Submit top-up"}
-        </button>
-        <p className="text-xs text-navy-400">Your balance updates once an admin confirms this payment.</p>
-      </div>
+          <label className="flex items-start gap-2.5 cursor-pointer bg-navy-50 rounded-lg px-3 py-2.5">
+            <input
+              type="checkbox"
+              className="w-4 h-4 mt-0.5 shrink-0 accent-gold-400"
+              checked={consented}
+              onChange={(e) => setConsented(e.target.checked)}
+            />
+            <span className="text-xs text-navy-600">
+              I agree that this deposit will not be refundable and will only be applied towards ride commissions
+              and subscriptions.
+            </span>
+          </label>
+
+          <button
+            className="btn-primary w-full"
+            disabled={submitting || !amount || Number(amount) <= 0 || !consented}
+            onClick={submitTopup}
+          >
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {uploading ? "Uploading proof…" : submitting ? "Submitting…" : "Submit top-up"}
+          </button>
+          <p className="text-xs text-navy-400">Your balance updates once an admin confirms this payment.</p>
+        </div>
+      ) : (
+        <div className="card p-5 bg-navy-50">
+          <p className="text-sm font-semibold text-navy-700">Get verified to top up your wallet</p>
+          <p className="text-xs text-navy-500 mt-1 mb-3">
+            {verificationStatus === "pending"
+              ? "Wallet top-ups open up once an admin has reviewed and approved your documents."
+              : "Submit your documents for review to unlock wallet top-ups."}
+          </p>
+          <Link href="/driver/verification" className="btn-primary w-full !text-sm text-center block">
+            Go to verification
+          </Link>
+        </div>
+      )}
 
       <div>
         <p className="label mb-3">Recent activity</p>
