@@ -87,7 +87,13 @@ export function AuthForm({
       .eq("id", userId)
       .single();
 
-    router.push(profile?.role === "driver" ? "/driver" : profile?.role === "admin" ? "/admin" : "/rider");
+    const dashboardPath = profile?.role === "driver" ? "/driver" : profile?.role === "admin" ? "/admin" : "/rider";
+
+    if (mode === "signup" && (profile?.role === "rider" || profile?.role === "driver")) {
+      router.push(`/join-vuma-associates?role=${profile.role}&next=${encodeURIComponent(dashboardPath)}`);
+    } else {
+      router.push(dashboardPath);
+    }
     router.refresh();
   }
 

@@ -361,6 +361,45 @@ export interface DriverWalletTransaction {
   created_at: string;
 }
 
+export interface VumaAssociateMembership {
+  id: string;
+  profile_id: string;
+  role: "rider" | "driver";
+  status: "pending" | "active" | "lapsed" | "revoked";
+  constitution_version: string;
+  constitution_accepted_at: string;
+  paid_up_until: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  created_at: string;
+}
+
+export interface RideAccessRestriction {
+  id: string;
+  scope: "deluxe_only" | "all_rides";
+  starts_at: string;
+  ends_at: string;
+  is_active: boolean;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface RiderWalletTopup {
+  id: string;
+  rider_id: string;
+  amount: number;
+  currency: string;
+  reference_code: string | null;
+  proof_of_payment_path: string | null;
+  status: "pending" | "approved" | "rejected";
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  rejection_reason: string | null;
+  consented_at: string | null;
+  created_at: string;
+}
+
 export interface ChargeType {
   id: string;
   name: string;

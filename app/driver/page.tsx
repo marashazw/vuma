@@ -11,6 +11,7 @@ import type { Ride, DriverProfile, CountryCode } from "@/lib/types";
 import { Loader2, Power, MapPin, ArrowRight, Users, Check, Sparkles, CalendarClock, AlertTriangle } from "lucide-react";
 import { useModal } from "@/components/ui/ModalProvider";
 import { TripReminder } from "@/components/ui/TripReminder";
+import { checkRideAccessRestriction } from "@/lib/vumaAssociates";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -236,6 +237,12 @@ export default function DriverHomePage() {
   async function submitBid(ride: Ride) {
     if (!userId) return;
     const amount = bidAmounts[ride.id] ?? ride.rider_offer;
+
+    const restrictionCheck = await checkRideAccessRestriction(supabase, userId, ride.is_deluxe);
+    if (restrictionCheck.restricted) {
+      await modal.alert(restrictionCheck.reason || "This ride isn't currently available to you.");
+      return;
+    }
 
     if (!hasActiveSubscription) {
       const affordRes = await fetch(`/api/rides/${ride.id}/check-bid-affordability`, {

@@ -756,9 +756,13 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
 42. Then run `supabase/migrations/041_driver_declaration.sql` — adds
     `driver_profiles.declaration_accepted_at`, recording when a driver accepted the mandatory
     legal declaration now required before verification submission.
-43. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
+43. Then run `supabase/migrations/042_vuma_associates.sql` — the full Vuma Associates membership
+    system: membership records, time-windowed ride-access restrictions, global settings, and a
+    new rider wallet top-up mechanism. See the migration file and the feature description below
+    for the full reasoning.
+44. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
     for both ZA and ZW so the driver subscription page isn't empty).
-44. Go to Project Settings → API and copy:
+45. Go to Project Settings → API and copy:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ keep this secret — never expose it
@@ -1039,6 +1043,48 @@ simplified and should be hardened before handling real money and real users at s
   realtime publication — without that, this notification (or any realtime feature on this
   table) would have silently never fired, no error, just nothing happening. Fixed in
   migration 037.
+
+- **Vuma Associates** — a membership-based networking society for riders and drivers, built as
+  a genuinely new system on top of the core marketplace rather than a single flag on
+  `profiles`, since the requirement explicitly anticipates more benefits being added over
+  time. Covers:
+  - **Sign-up flow**: after creating an account, a new rider or driver is asked whether they'd
+    like to join, and if so shown the full constitution (`components/vuma-associates/
+    ConstitutionContent.tsx`, reused on both the sign-up flow and a standalone page at
+    `/vuma-associates/constitution`) before their membership is created. Declining or skipping
+    this simply continues to their dashboard as normal — nothing is required.
+  - **Membership status**: a dedicated `vuma_associates_memberships` table with its own status
+    lifecycle (`pending` → `active`/paid-up, or `lapsed`/`revoked`), separate from the
+    underlying rider or driver account, which membership status never affects on its own.
+  - **Rider wallet top-ups**: previously riders had *no* way to add funds to their own wallet
+    at all — it could only ever be earned via driver-issued change credit, and was subject to
+    the caps built for that (per-driver-per-rider, per-driver-total, rider-accrual). Active
+    members can now top up directly (`app/rider/wallet/page.tsx`, mirroring the driver
+    prepaid-wallet top-up flow exactly — submit amount plus reference or proof, admin
+    approves), and this is deliberately **not** governed by the change-credit caps, since it's
+    a different source of funds entirely (a direct deposit, not credit issued by another
+    user).
+  - **Ride-access restrictions** (Admin → Vuma Associates): a single, time-windowed mechanism
+    (`ride_access_restrictions`) covering both "restrict Deluxe or all rides to Associates" and
+    "restrict non-members/unpaid members from requesting or bidding" — these are the same rule
+    described from two directions, not two separate systems. During an active window, only an
+    active (paid-up) member can request (rider) or bid (driver) within the chosen scope;
+    checked client-side in both `app/rider/page.tsx` and `app/driver/page.tsx` via a shared
+    helper (`lib/vumaAssociates.ts`).
+  - **Driver registration gate**: an admin-discretion global toggle
+    (`vuma_associates_settings.require_membership_for_driver_registration`) that, when on,
+    blocks a new driver from submitting verification for review until they have an active
+    membership — enforced alongside the existing document/vehicle/declaration checks in
+    `app/driver/verification/page.tsx`.
+  - **Admin console** (`/admin/vuma-associates`): the global driver-registration toggle,
+    creating and toggling ride-access restrictions, and confirming pending memberships as
+    paid-up/active. Rider top-up review lives at `/admin/rider-wallet-topups`, linked from the
+    same console. Both pending memberships and pending rider top-ups now also surface in
+    Admin → Overview's Quick Tasks, alongside the existing pending-review items.
+  - The constitution itself is a genuine starting draft, not a bare template, but — like the
+    Terms of Service — uses `[REPLACE: ...]` markers wherever a real decision (governance
+    structure, the amendment/re-acceptance process) needs sign-off before publishing, rather
+    than guessing at specifics that weren't specified.
 
 ## Publishing to Google Play Store
 

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { LocationSearchInput } from "@/components/map/LocationSearchInput";
 import { NearbyDriversBadge } from "@/components/rider/NearbyDriversBadge";
 import { EditableLocationBadge } from "@/components/rider/EditableLocationBadge";
+import { checkRideAccessRestriction } from "@/lib/vumaAssociates";
 import { TripReminder } from "@/components/ui/TripReminder";
 import { suggestedFareRange, reverseGeocode, getRoadRoute, type RoadRoute } from "@/lib/geo";
 import { getWeatherAdvisory, type WeatherAdvisory } from "@/lib/weather";
@@ -228,6 +229,13 @@ export default function RiderHomePage() {
     } = await supabase.auth.getUser();
     if (!user) {
       router.push("/login");
+      return;
+    }
+
+    const restrictionCheck = await checkRideAccessRestriction(supabase, user.id, isDeluxe);
+    if (restrictionCheck.restricted) {
+      setError(restrictionCheck.reason || "This isn't currently available to you.");
+      setSubmitting(false);
       return;
     }
 

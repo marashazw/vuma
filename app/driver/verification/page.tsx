@@ -22,6 +22,8 @@ export default function DriverVerificationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [declarationAccepted, setDeclarationAccepted] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [requireMembership, setRequireMembership] = useState(false);
+  const [membershipStatus, setMembershipStatus] = useState<string | null>(null);
 
   const [vehicleMake, setVehicleMake] = useState("");
   const [vehicleModel, setVehicleModel] = useState("");
@@ -52,6 +54,21 @@ export default function DriverVerificationPage() {
     setVehicleColor(data?.vehicle_color || "");
     setPlateNumber(data?.plate_number || "");
     setVehicleSeats(data?.vehicle_seats ?? null);
+
+    const { data: settings } = await supabase
+      .from("vuma_associates_settings")
+      .select("require_membership_for_driver_registration")
+      .eq("id", true)
+      .single();
+    setRequireMembership(!!settings?.require_membership_for_driver_registration);
+
+    const { data: membership } = await supabase
+      .from("vuma_associates_memberships")
+      .select("status")
+      .eq("profile_id", user.id)
+      .maybeSingle();
+    setMembershipStatus(membership?.status || null);
+
     setLoading(false);
   }
 
@@ -160,7 +177,8 @@ export default function DriverVerificationPage() {
     !!profile.license_document_path &&
     !!profile.vehicle_registration_path &&
     !!profile.profile_photo_path;
-  const readyToSubmit = allUploaded && vehicleComplete && declarationAccepted;
+  const membershipSatisfied = !requireMembership || membershipStatus === "active";
+  const readyToSubmit = allUploaded && vehicleComplete && declarationAccepted && membershipSatisfied;
 
   return (
     <div className="space-y-5">
@@ -329,6 +347,23 @@ export default function DriverVerificationPage() {
         />
       </div>
 
+      {profile.verification_status !== "verified" && requireMembership && !membershipSatisfied && (
+        <div className="card p-4 bg-gold-50 border-gold-200">
+          <p className="text-sm font-semibold text-gold-700">Vuma Associates membership required</p>
+          <p className="text-xs text-navy-500 mt-1 mb-3">
+            Driver registration currently requires an active Vuma Associates membership.{" "}
+            {membershipStatus === "pending"
+              ? "Yours is awaiting confirmation — you'll be able to submit once it's active."
+              : "Join to continue with your driver verification."}
+          </p>
+          {!membershipStatus && (
+            <a href="/vuma-associates/constitution" className="btn-primary w-full !text-sm text-center block">
+              Learn about Vuma Associates
+            </a>
+          )}
+        </div>
+      )}
+
       {profile.verification_status !== "verified" && (
         <div className="card p-4 bg-navy-50">
           <label className="flex items-start gap-2.5 cursor-pointer">
@@ -356,9 +391,11 @@ export default function DriverVerificationPage() {
       )}
       {!readyToSubmit && profile.verification_status !== "verified" && (
         <p className="text-xs text-navy-400 text-center">
-          {allUploaded && vehicleComplete
-            ? "Accept the declaration above to submit for review."
-            : "Complete your vehicle details and upload all four documents to submit for review."}
+          {!allUploaded || !vehicleComplete
+            ? "Complete your vehicle details and upload all four documents to submit for review."
+            : !membershipSatisfied
+            ? "An active Vuma Associates membership is required before you can submit."
+            : "Accept the declaration above to submit for review."}
         </p>
       )}
     </div>

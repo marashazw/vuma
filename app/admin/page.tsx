@@ -23,6 +23,8 @@ export default async function AdminOverviewPage() {
     { data: txns },
     { count: pendingSubs },
     { count: pendingTopups },
+    { count: pendingRiderTopups },
+    { count: pendingMemberships },
     { data: pendingVerificationsRaw },
     { data: pendingDeluxeRaw },
     { count: activeSos },
@@ -36,6 +38,8 @@ export default async function AdminOverviewPage() {
     supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(500),
     supabase.from("manual_payment_submissions").select("*", { count: "exact", head: true }).eq("status", "pending"),
     supabase.from("driver_wallet_topups").select("*", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("rider_wallet_topups").select("*", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("vuma_associates_memberships").select("*", { count: "exact", head: true }).eq("status", "pending"),
     // Only counts as "needs review" once a driver has genuinely submitted
     // documents — verification_status defaults to 'pending' for every
     // brand-new signup too, so submitted_at is what distinguishes a real
@@ -93,6 +97,8 @@ export default async function AdminOverviewPage() {
       <QuickTasks
         pendingSubs={pendingSubs || 0}
         pendingTopups={pendingTopups || 0}
+        pendingRiderTopups={pendingRiderTopups || 0}
+        pendingMemberships={pendingMemberships || 0}
         pendingVerifications={pendingVerifications || []}
         pendingDeluxe={pendingDeluxe || []}
         activeSos={activeSos || 0}

@@ -22,6 +22,8 @@ interface TaskGroup {
 export function QuickTasks({
   pendingSubs,
   pendingTopups,
+  pendingRiderTopups,
+  pendingMemberships,
   pendingVerifications,
   pendingDeluxe,
   activeSos,
@@ -31,6 +33,8 @@ export function QuickTasks({
 }: {
   pendingSubs: number;
   pendingTopups: number;
+  pendingRiderTopups: number;
+  pendingMemberships: number;
   pendingVerifications: PendingPerson[];
   pendingDeluxe: PendingPerson[];
   activeSos: number;
@@ -54,6 +58,8 @@ export function QuickTasks({
     },
     { label: "Subscription payment to approve", count: pendingSubs, href: "/admin/subscriptions" },
     { label: "Wallet top-up to approve", count: pendingTopups, href: "/admin/wallet-topups" },
+    { label: "Rider wallet top-up to approve", count: pendingRiderTopups, href: "/admin/rider-wallet-topups" },
+    { label: "Vuma Associates membership awaiting confirmation", count: pendingMemberships, href: "/admin/vuma-associates" },
     { label: "Suspension appeal to review", count: pendingAppeals, href: "/admin/appeals" },
     { label: "Duplicate vehicle plate flagged", count: duplicateFlags, href: "/admin/referrals" },
   ];
