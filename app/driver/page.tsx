@@ -366,12 +366,14 @@ export default function DriverHomePage() {
         <Link href="/driver/verification" className="card p-4 flex items-center justify-between bg-gold-50 border-gold-200 block">
           <div>
             <p className="font-semibold text-sm text-gold-700">
-              {driverProfile?.verification_status === "pending" ? "Verification pending" : "Get verified to go online"}
+              {driverProfile?.verification_status === "pending" && driverProfile?.submitted_at
+                ? "Verification pending"
+                : "Get verified to go online"}
             </p>
             <p className="text-xs text-gold-600 mt-0.5">
-              {driverProfile?.verification_status === "pending"
+              {driverProfile?.verification_status === "pending" && driverProfile?.submitted_at
                 ? "An admin is reviewing your documents."
-                : "Upload your ID, license, and vehicle documents."}
+                : "Upload your ID, license, and vehicle documents, then submit for review here."}
             </p>
           </div>
           <ArrowRight className="w-4 h-4 text-gold-600" />
