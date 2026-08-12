@@ -1110,7 +1110,15 @@ simplified and should be hardened before handling real money and real users at s
     with exactly that status. Any driver who'd ever had a subscription manually waived by
     admin would have seen no reflection of it on their own subscription page at all, despite
     it correctly reducing their commission behind the scenes the whole time. Fixed to match
-    the status check the commission-resolution logic already used correctly.
+    the status check the commission-resolution logic already used correctly. **Fixed a real
+    discoverability gap in a later round**: both driver-facing cards on this page were
+    conditional on `holidayOffers.length > 0` — meaning a non-member driver would only ever
+    learn this benefit exists if they happened to visit while an offer was actually live. No
+    offer live, no mention of it at all, ever. Added a standing card, shown regardless of
+    whether an offer currently exists, so the benefit's existence itself is always
+    discoverable — separate from the "claim this specific offer" card, which still only shows
+    when something is actually claimable. Also added the benefit to the constitution's list,
+    which had been left out when this feature was built afterward.
 
 ## Publishing to Google Play Store
 

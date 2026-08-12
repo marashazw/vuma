@@ -35,6 +35,10 @@ export function ConstitutionContent() {
           Access to rides, or categories of rides such as Vuma Deluxe, during periods Vuma may from
           time to time reserve for active members only.
         </li>
+        <li>
+          Occasional "subscription holidays" — a free period on a subscription plan, offered by Vuma
+          from time to time for a limited window, exclusively to active members.
+        </li>
       </ul>
       <p>
         <strong>Further benefits — including structured mentorship, entrepreneurship resources, and

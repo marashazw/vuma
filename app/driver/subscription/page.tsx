@@ -339,6 +339,28 @@ function DriverSubscriptionInner() {
         </div>
       )}
 
+      {/* Standing mention, shown regardless of whether an offer happens to
+          be live right now — otherwise a driver who isn't a member would
+          only ever learn this benefit exists if they happened to visit
+          this page during the narrow window an offer was actually active. */}
+      {!holidayOffers.length && membershipStatus !== "active" && (
+        <div className="card p-5 bg-navy-50">
+          <p className="text-sm font-semibold text-navy-700 flex items-center gap-1.5">
+            <Gift className="w-4 h-4" /> Vuma Associates members get occasional free subscription periods
+          </p>
+          <p className="text-xs text-navy-500 mt-1 mb-3">
+            {membershipStatus === "pending"
+              ? "Vuma offers \"subscription holidays\" — a free period on a plan — to active members from time to time. Your membership is awaiting confirmation; you'll be eligible once it's active."
+              : "Vuma offers \"subscription holidays\" — a free period on a plan — to active members from time to time. Join now so you're eligible whenever the next one comes up."}
+          </p>
+          {!membershipStatus && (
+            <a href="/vuma-associates/constitution" className="btn-ghost w-full !text-sm text-center block">
+              Learn about Vuma Associates
+            </a>
+          )}
+        </div>
+      )}
+
       {pendingManual.filter((m) => m.status === "pending").map((m) => (
         <div key={m.id} className="card p-4 flex items-center gap-3 bg-gold-50 border-gold-200">
           <Clock className="w-4 h-4 text-gold-600 shrink-0" />
