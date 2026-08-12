@@ -1119,6 +1119,13 @@ simplified and should be hardened before handling real money and real users at s
     discoverable — separate from the "claim this specific offer" card, which still only shows
     when something is actually claimable. Also added the benefit to the constitution's list,
     which had been left out when this feature was built afterward.
+  - **The sign-up join prompt clarifies membership is optional — accurately, not
+    unconditionally.** A blanket "you don't need to join to sign up or drive" statement would
+    have been false the moment admin enables the driver-registration membership gate (see
+    above) — so this checks that same setting live and shows the honest version either way: a
+    full reassurance when membership genuinely isn't required for that role, or a specific
+    "joining is currently required to complete driver registration" note when it is. Riders
+    are never affected by this setting, so they always see the full reassurance.
 
 ## Publishing to Google Play Store
 

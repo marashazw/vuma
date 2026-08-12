@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Logo } from "@/components/ui/Logo";
@@ -16,6 +16,22 @@ function JoinVumaAssociatesContent() {
 
   const [step, setStep] = useState<"prompt" | "constitution">("prompt");
   const [submitting, setSubmitting] = useState(false);
+  // Riders never have a membership requirement to worry about — only
+  // drivers can be gated by the admin-controlled setting below, so the
+  // "you don't need to join" reassurance stays accurate for a rider
+  // regardless of what that setting is currently configured to.
+  const [membershipRequiredForRole, setMembershipRequiredForRole] = useState(false);
+
+  useEffect(() => {
+    if (role !== "driver") return;
+    supabase
+      .from("vuma_associates_settings")
+      .select("require_membership_for_driver_registration")
+      .eq("id", true)
+      .single()
+      .then(({ data }) => setMembershipRequiredForRole(!!data?.require_membership_for_driver_registration));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role]);
 
   function skip() {
     router.push(next);
@@ -76,11 +92,20 @@ function JoinVumaAssociatesContent() {
         <div className="card p-6 text-center">
           <Users className="w-10 h-10 text-gold-500 mx-auto mb-3" />
           <h1 className="text-xl font-bold text-navy-800 mb-2">Join Vuma Associates?</h1>
-          <p className="text-sm text-navy-500 mb-5">
+          <p className="text-sm text-navy-500 mb-3">
             A membership-based networking society for Vuma riders and drivers — helping each other with
             transportation, entrepreneurship ideas, and mentorship for success. More benefits will be added
             over time.
           </p>
+          {membershipRequiredForRole ? (
+            <p className="text-xs text-navy-400 mb-5">
+              Note: joining is currently required to complete driver registration.
+            </p>
+          ) : (
+            <p className="text-xs text-navy-400 mb-5">
+              Membership is entirely optional — you don't need to join to sign up, or to {role === "driver" ? "drive" : "ride"} with Vuma.
+            </p>
+          )}
           <button className="btn-primary w-full mb-2" onClick={() => setStep("constitution")}>
             Yes, tell me more
           </button>
