@@ -162,6 +162,11 @@ export default function VumaPrivateHubPage() {
                 Learn more &amp; join
               </Link>
             )}
+            {membership?.status === "pending" && (
+              <Link href="/rider" className="btn-primary w-full">
+                Back to book a ride
+              </Link>
+            )}
           </div>
         </div>
       </div>

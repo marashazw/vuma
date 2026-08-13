@@ -154,6 +154,11 @@ export default function VumaPrivateRequestPage() {
               Learn about Vuma Private
             </Link>
           )}
+          {membership?.status === "pending" && (
+            <Link href="/rider" className="btn-primary w-full">
+              Back to book a ride
+            </Link>
+          )}
         </div>
       </div>
     );
