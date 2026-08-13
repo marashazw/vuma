@@ -791,9 +791,16 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
     two RLS policies each querying that same table from within their own policy. See the
     migration file for the full explanation and the standard Postgres fix applied. Run this
     one as soon as possible if you've already deployed migrations 045–047.
-52. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
+52. Then run `supabase/migrations/051_vuma_private_fix_cooption_check.sql` — **fixes another
+    actual bug**, found immediately after the one above via direct user testing: "new row
+    violates row-level security policy for table vuma_private_group_members" when using the
+    co-option add-member flow, even with the target's toggle genuinely on. Different
+    mechanism from the recursion fix, same underlying category — a policy's subquery tried to
+    read someone else's row on a table whose own SELECT policy only allows reading your own,
+    so the check silently always failed. See the migration file for the full explanation.
+53. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
     for both ZA and ZW so the driver subscription page isn't empty).
-53. Go to Project Settings → API and copy:
+54. Go to Project Settings → API and copy:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ keep this secret — never expose it
