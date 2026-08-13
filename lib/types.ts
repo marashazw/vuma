@@ -388,6 +388,7 @@ export interface VumaPrivateTripRequest {
   seats_needed: number;
   note: string | null;
   status: "open" | "locked" | "cancelled" | "completed";
+  visibility: "group" | "platform";
   accepted_offer_id: string | null;
   created_at: string;
 }
@@ -420,6 +421,7 @@ export interface VumaAssociateMembership {
   paid_up_until: string | null;
   approved_by: string | null;
   approved_at: string | null;
+  auto_accept_cooption: boolean;
   created_at: string;
 }
 

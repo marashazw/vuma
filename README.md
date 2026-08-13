@@ -770,9 +770,18 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
     groups, trip requests, and cost-share offers with a database-level no-markup constraint.
     See the feature description below for the full reasoning, including what's deliberately
     not yet built.
-47. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
+47. Then run `supabase/migrations/046_vuma_private_platform_visibility.sql` — lets a member
+    opt a specific trip request into platform-wide visibility, off by default. See the feature
+    description below for an important legal caveat on this one specifically.
+48. Then run `supabase/migrations/047_vuma_private_cooption.sql` — a second, different consent
+    model: a member can pre-authorise being added directly into any group by an existing
+    member, via a standing toggle on their own membership, off by default. Also adds the first
+    UPDATE policy this table has ever had, with a trigger restricting it to that one column —
+    see the migration file for why a broader update policy would have been a real security
+    hole (self-approving membership status).
+49. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
     for both ZA and ZW so the driver subscription page isn't empty).
-48. Go to Project Settings → API and copy:
+50. Go to Project Settings → API and copy:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ keep this secret — never expose it
@@ -1207,6 +1216,40 @@ simplified and should be hardened before handling real money and real users at s
     for a requester to cancel a request or a driver to withdraw an offer once made, beyond
     direct database access). These are the natural next round of work on top of a functioning
     core.
+  - **Opt-in platform-wide visibility, added in a later round — with an important caveat.**
+    A member posting a trip request can now check "Also show to all Vuma Private members," off
+    by default, letting any active member across the whole platform see and respond to it, not
+    just their own group. **Worth being direct about the legal tension this introduces**: the
+    entire framing that keeps Vuma Private legally distinct from the main marketplace rests on
+    it being a private circle of people who already know each other — "the same as texting
+    your WhatsApp group," not a public board. Broadening a request to every active member
+    platform-wide starts to resemble general advertising again if it became the default or
+    typical path. Built as a deliberate, explicit, per-post opt-in specifically to preserve
+    that distinction — a member is making a conscious choice each time, not something the app
+    nudges them toward — with copy on the toggle itself explaining the trade-off, a distinct
+    badge on any request that's been widened, and a separate `/vuma-private/feed` page rather
+    than folding platform-wide requests into the default group view. Whether this opt-in
+    still sits comfortably within the "private circle" legal reasoning, or needs its own
+    review, is worth a direct conversation with whoever is advising on the jurisdictional
+    question this whole feature was built around.
+  - **A second, different way to reach more people — member-level standing consent, added
+    alongside (not replacing) platform-wide visibility above.** Rather than broadcasting one
+    trip request to everyone active, a member can toggle "let other members add me to their
+    group" once, on their own membership — off by default — and from then on, any existing
+    member of *any* group can add them directly, without needing per-addition approval, since
+    that standing consent already exists. Arguably sits more comfortably within the "private
+    circle" framing than platform-wide visibility does, since the added person becomes a
+    genuine, named member of that specific group rather than a stranger seeing a broadcast —
+    though the underlying tension is similar either way: both ultimately let a request reach
+    someone the requester hasn't personally met, just through different mechanics. A real,
+    previously-nonexistent gap was caught building this: `vuma_associates_memberships` had no
+    UPDATE policy at all, for anyone. A broad "can update your own row" policy would have let a
+    member set their own `status` to `'active'`, bypassing admin approval of membership
+    entirely — fixed with a trigger that restricts a non-service-role update to the
+    `auto_accept_cooption` column alone, no matter what a client-side request tries to change.
+    Discovering who's actually opted in required a small server-side route
+    (`/api/vuma-private/cooptable-members`) rather than a direct client query, since
+    membership rows aren't otherwise readable across different users at all.
 
 ## Publishing to Google Play Store
 

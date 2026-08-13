@@ -119,7 +119,7 @@ export default function TripRequestDetailPage({ params }: { params: Promise<{ id
   return (
     <div className="min-h-screen bg-paper">
       <header className="px-5 py-4 border-b border-navy-100 flex items-center gap-3">
-        <Link href={`/vuma-private/groups/${request.group_id}`} className="text-navy-400">
+        <Link href="/vuma-private" className="text-navy-400">
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <p className="font-bold text-navy-800">Trip request</p>
@@ -139,7 +139,10 @@ export default function TripRequestDetailPage({ params }: { params: Promise<{ id
             </span>
           </p>
           {request.note && <p className="text-sm text-navy-500 mt-2">"{request.note}"</p>}
-          <p className="text-xs text-navy-400 mt-2">Requested by {request.requester?.full_name || "Member"}</p>
+          <p className="text-xs text-navy-400 mt-2">
+            Requested by {request.requester?.full_name || "Member"}
+            {request.visibility === "platform" && " · shown to all Vuma Private members"}
+          </p>
         </div>
 
         {isLocked && acceptedOffer && (

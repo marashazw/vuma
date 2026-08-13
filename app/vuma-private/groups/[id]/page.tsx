@@ -5,7 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useModal } from "@/components/ui/ModalProvider";
 import type { VumaPrivateGroup, VumaPrivateTripRequest, Profile } from "@/lib/types";
-import { Loader2, Plus, ArrowLeft, MapPin, Users2, Calendar } from "lucide-react";
+import { Loader2, Plus, ArrowLeft, MapPin, Users2, Calendar, UserPlus, Check } from "lucide-react";
 import { format } from "date-fns";
 
 export default function GroupDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,7 +18,12 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   const [requests, setRequests] = useState<(VumaPrivateTripRequest & { requester?: Profile })[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ destination: "", when: "", seats: 1, note: "" });
+  const [form, setForm] = useState({ destination: "", when: "", seats: 1, note: "", visibility: "group" as "group" | "platform" });
+  const [showAddMembers, setShowAddMembers] = useState(false);
+  const [cooptableMembers, setCooptableMembers] = useState<{ id: string; full_name: string }[]>([]);
+  const [loadingCooptable, setLoadingCooptable] = useState(false);
+  const [addingId, setAddingId] = useState<string | null>(null);
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
   async function load() {
     const {
@@ -63,15 +68,44 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
       seats_needed: form.seats,
       note: form.note.trim() || null,
       status: "open",
+      visibility: form.visibility,
     });
     setSubmitting(false);
     if (error) {
       await modal.alert(`Could not post request: ${error.message}`);
       return;
     }
-    setForm({ destination: "", when: "", seats: 1, note: "" });
+    setForm({ destination: "", when: "", seats: 1, note: "", visibility: "group" });
     setShowForm(false);
     await load();
+  }
+
+  async function openAddMembers() {
+    setShowAddMembers(true);
+    setLoadingCooptable(true);
+    const res = await fetch("/api/vuma-private/cooptable-members", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ groupId }),
+    });
+    const data = await res.json();
+    setLoadingCooptable(false);
+    if (!res.ok) {
+      await modal.alert(`Could not load members: ${data.error || "Unknown error"}`);
+      return;
+    }
+    setCooptableMembers(data.members || []);
+  }
+
+  async function addMember(memberId: string) {
+    setAddingId(memberId);
+    const { error } = await supabase.from("vuma_private_group_members").insert({ group_id: groupId, profile_id: memberId });
+    setAddingId(null);
+    if (error) {
+      await modal.alert(`Could not add member: ${error.message}`);
+      return;
+    }
+    setAddedIds((prev) => new Set(prev).add(memberId));
   }
 
   if (loading) {
@@ -106,6 +140,47 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
           <Plus className="w-4 h-4" /> {showForm ? "Cancel" : "Need Help With A Trip?"}
         </button>
 
+        <button className="btn-ghost w-full !text-sm" onClick={() => (showAddMembers ? setShowAddMembers(false) : openAddMembers())}>
+          <UserPlus className="w-4 h-4" /> {showAddMembers ? "Hide" : "Add members"}
+        </button>
+
+        {showAddMembers && (
+          <div className="card p-5">
+            <p className="text-xs text-navy-400 mb-3">
+              Only members who've opted in to being added by anyone appear here — this doesn't require their
+              individual approval each time, since they've already given standing consent.
+            </p>
+            {loadingCooptable ? (
+              <div className="flex items-center gap-2 text-navy-300 py-4 justify-center">
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading&hellip;
+              </div>
+            ) : !cooptableMembers.length ? (
+              <p className="text-navy-400 text-sm">No members are currently open to being added this way.</p>
+            ) : (
+              <div className="space-y-2">
+                {cooptableMembers.map((m) => (
+                  <div key={m.id} className="flex items-center justify-between">
+                    <p className="text-sm text-navy-700">{m.full_name}</p>
+                    {addedIds.has(m.id) ? (
+                      <span className="text-xs text-jade-600 flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" /> Added
+                      </span>
+                    ) : (
+                      <button
+                        className="btn-ghost !py-1.5 !px-3 !text-xs"
+                        disabled={addingId === m.id}
+                        onClick={() => addMember(m.id)}
+                      >
+                        {addingId === m.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Add"}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {showForm && (
           <div className="card p-5 space-y-3">
             <p className="text-xs text-navy-400 -mt-1">
@@ -130,8 +205,21 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
               <label className="label block mb-1">Note to group</label>
               <input className="input" placeholder="e.g. Going for church, can help with fuel" value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} />
             </div>
+            <label className="flex items-start gap-2.5 cursor-pointer bg-navy-50 rounded-lg px-3 py-2.5">
+              <input
+                type="checkbox"
+                className="w-4 h-4 mt-0.5 shrink-0 accent-gold-400"
+                checked={form.visibility === "platform"}
+                onChange={(e) => setForm((f) => ({ ...f, visibility: e.target.checked ? "platform" : "group" }))}
+              />
+              <span className="text-xs text-navy-600">
+                <span className="font-semibold">Also show to all Vuma Private members</span>, not just this group — off
+                by default. Nobody in this group offering to help yet? Widening this lets any active member across
+                Vuma Private see and respond, not just people you already know.
+              </span>
+            </label>
             <button className="btn-primary w-full" disabled={submitting || !form.destination.trim() || !form.when} onClick={postRequest}>
-              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Ask My Group"}
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : form.visibility === "platform" ? "Ask My Group & Vuma Private" : "Ask My Group"}
             </button>
             <div className="bg-navy-50 rounded-lg p-3 text-xs text-navy-500 space-y-1">
               <p className="font-semibold text-navy-600">Group Rules:</p>
@@ -153,7 +241,14 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
                   <p className="font-semibold text-sm flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5" /> {r.destination_address}
                   </p>
-                  <span className="text-[10px] font-bold uppercase tracking-wide">{r.status}</span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {r.visibility === "platform" && (
+                      <span className="text-[9px] font-bold uppercase tracking-wide bg-gold-100 text-gold-700 px-1.5 py-0.5 rounded">
+                        Vuma Private-wide
+                      </span>
+                    )}
+                    <span className="text-[10px] font-bold uppercase tracking-wide">{r.status}</span>
+                  </div>
                 </div>
                 <p className="text-xs flex items-center gap-3 opacity-80">
                   <span className="flex items-center gap-1">

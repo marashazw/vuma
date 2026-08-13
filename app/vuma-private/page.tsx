@@ -5,7 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useModal } from "@/components/ui/ModalProvider";
 import type { VumaPrivateGroup, VumaAssociateMembership } from "@/lib/types";
-import { Loader2, Users, Plus, LogIn, Copy, Check, ArrowRight, ShieldCheck } from "lucide-react";
+import { Loader2, Users, Plus, LogIn, Copy, Check, ArrowRight, ShieldCheck, Globe2 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 
 export default function VumaPrivateHubPage() {
@@ -109,6 +109,13 @@ export default function VumaPrivateHubPage() {
     setTimeout(() => setCopiedId(null), 1500);
   }
 
+  async function toggleCooption() {
+    if (!membership) return;
+    const newValue = !membership.auto_accept_cooption;
+    await supabase.from("vuma_associates_memberships").update({ auto_accept_cooption: newValue }).eq("id", membership.id);
+    setMembership({ ...membership, auto_accept_cooption: newValue });
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen text-navy-300">
@@ -178,6 +185,20 @@ export default function VumaPrivateHubPage() {
           <p className="text-navy-400 text-sm mt-1">Your groups — private circles for cost-sharing trips.</p>
         </div>
 
+        <label className="card p-4 flex items-start gap-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            className="w-4 h-4 mt-0.5 shrink-0 accent-gold-400"
+            checked={membership?.auto_accept_cooption || false}
+            onChange={toggleCooption}
+          />
+          <span className="text-xs text-navy-600">
+            <span className="font-semibold">Let other members add me to their group</span> — off by default. When
+            on, any existing member of a group can add you directly, without needing your approval each time. You
+            can turn this off again at any point.
+          </span>
+        </label>
+
         <div className="grid grid-cols-2 gap-3">
           <button className="btn-ghost !text-sm" onClick={() => (setShowCreate((s) => !s), setShowJoin(false))}>
             <Plus className="w-4 h-4" /> New group
@@ -186,6 +207,10 @@ export default function VumaPrivateHubPage() {
             <LogIn className="w-4 h-4" /> Join with code
           </button>
         </div>
+
+        <Link href="/vuma-private/feed" className="btn-ghost w-full !text-sm flex items-center justify-center gap-1.5">
+          <Globe2 className="w-4 h-4" /> See Vuma Private-wide requests
+        </Link>
 
         {showCreate && (
           <div className="card p-5 space-y-3">
