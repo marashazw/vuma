@@ -20,8 +20,8 @@ const PRIMARY_TABS = [
 export const SECONDARY_TABS = [
   { href: "/admin/commissions", label: "Commissions" },
   { href: "/admin/charges", label: "Charges" },
-  { href: "/admin/vuma-associates", label: "Vuma Private Members" },
-  { href: "/admin/vuma-private", label: "Vuma Private Groups" },
+  { href: "/admin/vuma-associates", label: "Private Members" },
+  { href: "/admin/vuma-private", label: "Private Groups" },
   { href: "/admin/notices", label: "Notices" },
   { href: "/admin/appeals", label: "Appeals" },
   { href: "/admin/fraud", label: "Fraud" },

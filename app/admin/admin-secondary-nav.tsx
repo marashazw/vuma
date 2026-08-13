@@ -18,7 +18,7 @@ export function AdminSecondaryNav() {
               key={t.href}
               href={t.href}
               className={cn(
-                "px-3 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap",
+                "px-3 py-2 rounded-lg text-sm font-medium transition break-words",
                 active ? "bg-navy-800 text-paper" : "bg-navy-50 text-navy-500 hover:bg-navy-100 hover:text-navy-700 lg:bg-transparent"
               )}
             >
