@@ -56,37 +56,25 @@ export default function RiderStartPage() {
 
   return (
     <div className="min-h-screen bg-paper flex items-center justify-center px-5 py-10">
-      <div className="max-w-md w-full">
-        <div className="flex justify-center mb-6">
+      <div className="max-w-md w-full text-center">
+        <div className="flex justify-center mb-8">
           <Logo />
         </div>
-        <p className="text-center text-sm text-navy-500 mb-5">What would you like to do?</p>
-        <div className="space-y-3">
-          <button
-            className="card p-5 w-full text-left flex items-center justify-between hover:border-gold-300"
-            onClick={() => router.push("/rider")}
-          >
-            <div>
-              <p className="font-semibold text-navy-800 flex items-center gap-1.5">
-                <Car className="w-4 h-4 text-gold-500" /> Book a ride
-              </p>
-              <p className="text-xs text-navy-400 mt-0.5">Name your fare, get matched with a nearby driver.</p>
-            </div>
-            <ArrowRight className="w-4 h-4 text-navy-300 shrink-0" />
-          </button>
-          <button
-            className="card p-5 w-full text-left flex items-center justify-between hover:border-jade-300"
-            onClick={() => router.push("/vuma-private")}
-          >
-            <div>
-              <p className="font-semibold text-navy-800 flex items-center gap-1.5">
-                <Users className="w-4 h-4 text-jade-500" /> Ask my Vuma Private group
-              </p>
-              <p className="text-xs text-navy-400 mt-0.5">Cost-share a trip with people you already know.</p>
-            </div>
-            <ArrowRight className="w-4 h-4 text-navy-300 shrink-0" />
-          </button>
-        </div>
+
+        <button
+          className="btn-primary w-full !py-4 !text-base flex items-center justify-center gap-2"
+          onClick={() => router.push("/rider")}
+        >
+          <Car className="w-5 h-5" /> Book a ride
+        </button>
+
+        <button
+          className="mt-4 text-sm text-navy-500 hover:text-navy-700 flex items-center justify-center gap-1.5 mx-auto"
+          onClick={() => router.push("/vuma-private/request")}
+        >
+          <Users className="w-4 h-4 text-jade-500" /> Or ask my Vuma Private group
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
       </div>
     </div>
   );

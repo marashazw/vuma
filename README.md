@@ -786,9 +786,14 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
 50. Then run `supabase/migrations/049_vuma_private_fee_transaction_type.sql` — adds
     `vuma_private_fee` as a valid transaction type, needed for the actual fee deduction
     mechanism (see the feature description below).
-51. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
+51. Then run `supabase/migrations/050_vuma_private_fix_recursion.sql` — **fixes an actual bug**:
+    "infinite recursion detected in policy for relation vuma_private_group_members," caused by
+    two RLS policies each querying that same table from within their own policy. See the
+    migration file for the full explanation and the standard Postgres fix applied. Run this
+    one as soon as possible if you've already deployed migrations 045–047.
+52. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
     for both ZA and ZW so the driver subscription page isn't empty).
-52. Go to Project Settings → API and copy:
+53. Go to Project Settings → API and copy:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ keep this secret — never expose it
@@ -1322,6 +1327,29 @@ simplified and should be hardened before handling real money and real users at s
   first attempt would have inherited the rider layout's top bar and bottom nav around what's
   meant to be a clean, focused choice screen, doubling up chrome awkwardly; matches how
   `/join-vuma-associates` already avoids the same problem for the sign-up flow.
+  - **Fixed a real RLS bug, and redesigned the flow, in a later round.** Creating a group was
+    failing with "infinite recursion detected in policy for relation
+    vuma_private_group_members" — two policies each contained a subquery selecting from that
+    same table to check "is the current user already in this group," and Postgres applies RLS
+    to that inner subquery too, meaning it re-evaluates the very same policy, whose subquery
+    selects from the table again, forever. Fixed with a `SECURITY DEFINER` function
+    (`is_member_of_vuma_private_group`), which runs with the function owner's privileges
+    rather than the calling user's RLS context — the standard, documented way to break this
+    specific class of Postgres recursion. Applied consistently to every policy that queried
+    into this table, not just the two that were strictly self-referencing.
+  - Also reworked "Ask my Vuma Private group" to lead with **where you're going first**,
+    matching the familiar regular-booking flow, rather than requiring a detour into a specific
+    group's own page before you could even say your destination. A new page
+    (`/vuma-private/request`) asks destination/when/seats/note first, then "who should see
+    this" second — pick an existing group, or create one on the spot if none exist yet, with
+    the same platform-wide-visibility opt-in from earlier folded into this same second step.
+    The original per-group posting form on a specific group's own page was left untouched —
+    that's a genuinely different, still-valid case (already decided which group, just want to
+    post there directly), not replaced by this new entry point.
+  - "Book a ride" is now visually the obvious primary action on the login choice screen — an
+    actual filled, full-width primary button — with "Ask my Vuma Private group" demoted to a
+    smaller, secondary text link underneath, rather than the two options having equal visual
+    weight as they did in the first version.
 
 ## Publishing to Google Play Store
 
