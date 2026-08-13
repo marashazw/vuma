@@ -91,6 +91,8 @@ export function AuthForm({
 
     if (mode === "signup" && (profile?.role === "rider" || profile?.role === "driver")) {
       router.push(`/join-vuma-associates?role=${profile.role}&next=${encodeURIComponent(dashboardPath)}`);
+    } else if (mode === "login" && profile?.role === "rider") {
+      router.push("/rider-start");
     } else {
       router.push(dashboardPath);
     }

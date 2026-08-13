@@ -1309,6 +1309,19 @@ simplified and should be hardened before handling real money and real users at s
   `pending` — a driver whose Deluxe certification had lapsed to `expired` showed no indicator
   in the list at all, even though that's arguably the status most worth an admin noticing (a
   previously-certified driver who may need re-inspection). Added a badge for that state too.
+- **A rider who's also an active Vuma Private member gets a choice right after logging in** —
+  "Book a ride" (the regular marketplace) or "Ask my Vuma Private group" (cost-share within a
+  group), rather than needing to already know Vuma Private exists and navigate there
+  separately every time. Deliberately scoped to **login**, not sign-up — a brand-new signup
+  can't be an active member yet regardless (membership starts `pending`, awaiting admin
+  approval), so the existing `/join-vuma-associates` sign-up flow was left untouched. Also
+  deliberately scoped to riders specifically, matching the request, and to *active* members
+  only — a non-member is routed straight through with no prompt at all, so the large majority
+  of riders who aren't members see no extra tap added to their login at all. Built as a new,
+  standalone top-level route (`/rider-start`) rather than nested under `/rider` — the obvious
+  first attempt would have inherited the rider layout's top bar and bottom nav around what's
+  meant to be a clean, focused choice screen, doubling up chrome awkwardly; matches how
+  `/join-vuma-associates` already avoids the same problem for the sign-up flow.
 
 ## Publishing to Google Play Store
 
