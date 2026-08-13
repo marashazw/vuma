@@ -798,9 +798,13 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
     mechanism from the recursion fix, same underlying category — a policy's subquery tried to
     read someone else's row on a table whose own SELECT policy only allows reading your own,
     so the check silently always failed. See the migration file for the full explanation.
-53. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
+53. Then run `supabase/migrations/052_vuma_private_request_details.sql` — adds pickup location
+    and Deluxe preference to trip requests (matching regular ride requests), and a multi-group
+    sharing table so a request can be visible to more than one group at once — additive, same
+    pattern as platform-wide visibility, not a replacement for the single-group model.
+54. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
     for both ZA and ZW so the driver subscription page isn't empty).
-54. Go to Project Settings → API and copy:
+55. Go to Project Settings → API and copy:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ keep this secret — never expose it
@@ -1357,6 +1361,23 @@ simplified and should be hardened before handling real money and real users at s
     actual filled, full-width primary button — with "Ask my Vuma Private group" demoted to a
     smaller, secondary text link underneath, rather than the two options having equal visual
     weight as they did in the first version.
+  - **A further round adds: a prominent "Need Help With A Trip?" button on the hub page**
+    itself (below New group/Join with code, alongside the existing group-detail and
+    login-choice entry points — three ways in now, not competing, each suited to a different
+    starting point). **The request flow gained a real map, pickup location, and a Deluxe
+    preference**, matching the regular ride-booking experience — same `RideMap` component,
+    same `LocationSearchInput`, reused directly rather than rebuilt. **Multi-group sharing**:
+    a request can now be visible to more than one group at once (a new
+    `vuma_private_trip_request_shares` junction table, additive alongside the original
+    single-`group_id` model — every existing policy and query built around `group_id` keeps
+    working exactly as before; sharing with additional groups is a separate, optional
+    mechanism layered on top). **A "now" button** next to every trip-date picker in Vuma
+    Private, added consistently to both the new request flow and the original group-page
+    form. **The driver dashboard's Vuma Private link now shows a live open-requests count**
+    ("There are 3 open requests in Vuma Private now") when there's anything to show — RLS
+    naturally scopes the count to whatever that specific driver can actually see, so a
+    non-member correctly sees nothing added to the link at all, rather than a discouraging
+    "(0) open requests."
 
 ## Publishing to Google Play Store
 

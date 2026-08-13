@@ -5,7 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useModal } from "@/components/ui/ModalProvider";
 import type { VumaPrivateGroup, VumaPrivateTripRequest, Profile } from "@/lib/types";
-import { Loader2, Plus, ArrowLeft, MapPin, Users2, Calendar, UserPlus, Check } from "lucide-react";
+import { Loader2, Plus, ArrowLeft, MapPin, Users2, Calendar, UserPlus, Check, Clock } from "lucide-react";
 import { format } from "date-fns";
 
 export default function GroupDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -194,7 +194,26 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label block mb-1">When</label>
-                <input type="datetime-local" className="input" value={form.when} onChange={(e) => setForm((f) => ({ ...f, when: e.target.value }))} />
+                <div className="flex gap-1.5">
+                  <input
+                    type="datetime-local"
+                    className="input flex-1"
+                    value={form.when}
+                    onChange={(e) => setForm((f) => ({ ...f, when: e.target.value }))}
+                  />
+                  <button
+                    type="button"
+                    className="btn-ghost !px-2.5"
+                    title="Set to now"
+                    onClick={() => {
+                      const now = new Date();
+                      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                      setForm((f) => ({ ...f, when: now.toISOString().slice(0, 16) }));
+                    }}
+                  >
+                    <Clock className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="label block mb-1">Seats needed</label>

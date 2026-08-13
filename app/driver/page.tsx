@@ -35,6 +35,7 @@ export default function DriverHomePage() {
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [deluxeMultiplier, setDeluxeMultiplier] = useState(1.5);
+  const [vumaPrivateOpenCount, setVumaPrivateOpenCount] = useState(0);
   const userIdRef = useRef<string | null>(null);
 
   const loadActiveRide = useCallback(
@@ -211,6 +212,23 @@ export default function DriverHomePage() {
     };
   }, [userId, supabase, loadDriverProfile]);
 
+  // RLS naturally scopes this count to whatever this specific driver can
+  // actually see — their own groups' requests, anything shared with
+  // those groups, and platform-wide-visible ones if they're an active
+  // member. A non-member correctly sees 0 here, since they genuinely
+  // can't see any requests until they join — the link itself stays
+  // hidden below rather than showing a discouraging "(0) open requests."
+  useEffect(() => {
+    (async () => {
+      const { count } = await supabase
+        .from("vuma_private_trip_requests")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "open");
+      setVumaPrivateOpenCount(count || 0);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const isSuspended = !!(driverProfile?.suspended_until && new Date(driverProfile.suspended_until) > new Date());
 
   async function toggleOnline() {
@@ -334,7 +352,15 @@ export default function DriverHomePage() {
         href="/vuma-private"
         className="flex items-center justify-between text-xs text-navy-400 hover:text-navy-600"
       >
-        <span>Have your own circle to help with rides? Try Vuma Private — cost-share, no fares</span>
+        <span>
+          Have your own circle to help with rides? Try Vuma Private — cost-share, no fares
+          {vumaPrivateOpenCount > 0 && (
+            <span className="block text-jade-600 font-semibold mt-0.5">
+              There {vumaPrivateOpenCount === 1 ? "is" : "are"} {vumaPrivateOpenCount} open request
+              {vumaPrivateOpenCount === 1 ? "" : "s"} in Vuma Private now.
+            </span>
+          )}
+        </span>
         <span className="shrink-0 ml-2">→</span>
       </Link>
 

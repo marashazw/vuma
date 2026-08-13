@@ -384,6 +384,10 @@ export interface VumaPrivateTripRequest {
   destination_address: string;
   destination_lat: number | null;
   destination_lng: number | null;
+  pickup_address: string | null;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
+  wants_deluxe: boolean;
   needed_at: string;
   seats_needed: number;
   note: string | null;

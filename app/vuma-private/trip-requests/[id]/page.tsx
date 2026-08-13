@@ -3,11 +3,14 @@
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/client";
 import { useModal } from "@/components/ui/ModalProvider";
 import type { VumaPrivateTripRequest, VumaPrivateTripOffer, Profile } from "@/lib/types";
-import { Loader2, ArrowLeft, MapPin, Users2, Calendar, Check, AlertTriangle } from "lucide-react";
+import { Loader2, ArrowLeft, MapPin, Users2, Calendar, Check, AlertTriangle, Sparkles } from "lucide-react";
 import { format } from "date-fns";
+
+const RideMap = dynamic(() => import("@/components/map/RideMap"), { ssr: false });
 
 export default function TripRequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: requestId } = use(params);
@@ -138,17 +141,33 @@ export default function TripRequestDetailPage({ params }: { params: Promise<{ id
       </header>
 
       <div className="max-w-2xl mx-auto px-5 py-6 space-y-5">
+        {request.pickup_lat && request.pickup_lng && request.destination_lat && request.destination_lng && (
+          <div className="h-40 rounded-xl overflow-hidden border border-navy-100">
+            <RideMap pickup={[request.pickup_lat, request.pickup_lng]} dropoff={[request.destination_lat, request.destination_lng]} showPickupMarker />
+          </div>
+        )}
+
         <div className="card p-5">
+          {request.pickup_address && (
+            <p className="text-sm text-navy-500 flex items-center gap-1.5 mb-1">
+              <MapPin className="w-3.5 h-3.5 text-navy-300" /> From {request.pickup_address}
+            </p>
+          )}
           <p className="font-semibold flex items-center gap-1.5">
             <MapPin className="w-4 h-4 text-navy-400" /> {request.destination_address}
           </p>
-          <p className="text-sm text-navy-500 flex items-center gap-3 mt-2">
+          <p className="text-sm text-navy-500 flex items-center gap-3 mt-2 flex-wrap">
             <span className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5" /> {format(new Date(request.needed_at), "EEE d MMM, HH:mm")}
             </span>
             <span className="flex items-center gap-1">
               <Users2 className="w-3.5 h-3.5" /> {request.seats_needed} seat{request.seats_needed > 1 ? "s" : ""} needed
             </span>
+            {request.wants_deluxe && (
+              <span className="flex items-center gap-1 text-gold-600 font-semibold">
+                <Sparkles className="w-3.5 h-3.5" /> Deluxe preferred
+              </span>
+            )}
           </p>
           {request.note && <p className="text-sm text-navy-500 mt-2">"{request.note}"</p>}
           <p className="text-xs text-navy-400 mt-2">

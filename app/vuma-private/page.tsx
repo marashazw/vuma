@@ -218,6 +218,10 @@ export default function VumaPrivateHubPage() {
           </button>
         </div>
 
+        <Link href="/vuma-private/request" className="btn-primary w-full flex items-center justify-center gap-1.5">
+          Need Help With A Trip?
+        </Link>
+
         <Link href="/vuma-private/feed" className="btn-ghost w-full !text-sm flex items-center justify-center gap-1.5">
           <Globe2 className="w-4 h-4" /> See Vuma Private-wide requests
         </Link>
