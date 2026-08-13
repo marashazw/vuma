@@ -12,9 +12,12 @@ export async function POST(req: NextRequest) {
   const { data: profile } = await supabase.from("profiles").select("is_super_admin").eq("id", user.id).single();
   if (!profile?.is_super_admin) return NextResponse.json({ error: "Admin access required" }, { status: 403 });
 
-  const { feeType, feeAmount, currency } = await req.json();
+  const { feeType, feeAmount, feePercentage, currency } = await req.json();
   if (!["monthly", "per_trip", "none"].includes(feeType)) {
     return NextResponse.json({ error: "feeType must be 'monthly', 'per_trip', or 'none'" }, { status: 400 });
+  }
+  if (feeType === "per_trip" && (Number(feePercentage) < 0 || Number(feePercentage) > 100)) {
+    return NextResponse.json({ error: "feePercentage must be between 0 and 100" }, { status: 400 });
   }
 
   const admin = createAdminClient();
@@ -23,6 +26,7 @@ export async function POST(req: NextRequest) {
     .update({
       fee_type: feeType,
       fee_amount: Number(feeAmount) || 0,
+      fee_percentage: Number(feePercentage) || 0,
       currency: currency || "USD",
       updated_by: user.id,
       updated_at: new Date().toISOString(),
@@ -36,7 +40,7 @@ export async function POST(req: NextRequest) {
     action: "update_vuma_private_fee_settings",
     target_type: "vuma_private_fee_settings",
     target_id: "singleton",
-    details: { feeType, feeAmount, currency },
+    details: { feeType, feeAmount, feePercentage, currency },
   });
 
   return NextResponse.json({ ok: true });

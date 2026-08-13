@@ -779,9 +779,16 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
     UPDATE policy this table has ever had, with a trigger restricting it to that one column —
     see the migration file for why a broader update policy would have been a real security
     hole (self-approving membership status).
-49. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
+49. Then run `supabase/migrations/048_vuma_private_fee_percentage.sql` — a per-trip Vuma
+    Private membership fee is now a percentage of the trip's cost-share amount, not a flat
+    amount, matching how taxes/levies already separate percentage and flat charges. A monthly
+    fee stays flat, since there's no single transaction to take a percentage of.
+50. Then run `supabase/migrations/049_vuma_private_fee_transaction_type.sql` — adds
+    `vuma_private_fee` as a valid transaction type, needed for the actual fee deduction
+    mechanism (see the feature description below).
+51. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
     for both ZA and ZW so the driver subscription page isn't empty).
-50. Go to Project Settings → API and copy:
+52. Go to Project Settings → API and copy:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ keep this secret — never expose it
@@ -1204,18 +1211,38 @@ simplified and should be hardened before handling real money and real users at s
     membership-approval page, now labelled "Vuma Private Members" in the nav to disambiguate)
     covering all groups with member counts, recent trip request activity for safety
     monitoring, and membership fee settings (monthly or per-trip, explicitly described to
-    admin as framed to members as a fee, never a commission).
+    admin as framed to members as a fee, never a commission — a monthly fee is a flat amount,
+    a per-trip fee is a percentage of that trip's cost-share amount, same distinction
+    taxes/levies already use between percentage and flat charges).
+  - **Fee deduction actually built, in a later round.** Turned out neither fee type needed a
+    scheduled job — both are triggered by a real, specific moment rather than a timer: a
+    per-trip fee deducts when the requester accepts an offer (moved from a direct client-side
+    update to a proper server-side route, `/api/vuma-private/accept-offer`, since a financial
+    check has no business living in the browser — insufficient balance blocks the lock
+    entirely rather than locking first and sorting out payment after). A monthly fee works
+    differently: an explicit "Renew" action (`/api/vuma-private/renew-membership`) deducts the
+    flat fee and extends `paid_up_until` by 30 days from whichever is later — today, or the
+    current paid-up date, so renewing early never shortens time already paid for. Attempting
+    to lock a trip with an unpaid monthly fee is blocked with the same kind of clear message
+    as insufficient balance for a per-trip fee. **A real architectural gap surfaced while
+    wiring this up**: the fee always deducts from `profiles.wallet_balance`, since Vuma
+    Private is role-agnostic — but the only UI for that balance lived at `/rider/wallet`,
+    whose layout redirects any driver-role user straight to `/driver` before they'd ever see
+    it. A driver-role member would have been silently bounced away, or worse, sent to
+    `/driver/wallet` — a completely different balance, the prepaid commission wallet, not this
+    one. Fixed with a new, dedicated, role-agnostic page (`/vuma-private/wallet`) that works
+    identically regardless of the member's underlying app role; the same monthly-renewal card
+    was also added to the existing `/rider/wallet` page, so a rider-role member sees it in the
+    wallet tab they already know without needing to discover a separate page just to renew.
   - **Deliberately not yet built, given the scope of everything above** — flagged honestly
-    rather than silently left out: automatic fee deduction from a member's wallet (the fee
-    *settings* exist and are admin-configurable, but nothing yet actually charges a member
-    monthly or per-trip — this needs a scheduled/triggered deduction mechanism, the same kind
-    of "no reliable cron on this hosting tier" constraint already documented for the sweep
-    routes elsewhere in this file); group management UI beyond create/join (no way to leave a
+    rather than silently left out: group management UI beyond create/join (no way to leave a
     group, remove a member, or rename one from the UI yet); and a trip request's own
     cancellation/decline flow (an offer can be made and accepted, but there's no explicit way
     for a requester to cancel a request or a driver to withdraw an offer once made, beyond
     direct database access). These are the natural next round of work on top of a functioning
-    core.
+    core. (Automatic fee deduction, listed here as deferred in an earlier round, is now built
+    — see below; it turned out not to need a scheduled job after all, since both fee types are
+    triggered by a real, specific event rather than needing to run on a timer.)
   - **Opt-in platform-wide visibility, added in a later round — with an important caveat.**
     A member posting a trip request can now check "Also show to all Vuma Private members," off
     by default, letting any active member across the whole platform see and respond to it, not

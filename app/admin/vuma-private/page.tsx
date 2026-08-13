@@ -13,7 +13,7 @@ export default function AdminVumaPrivatePage() {
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState<(VumaPrivateGroup & { memberCount: number; creator?: Profile })[]>([]);
   const [requests, setRequests] = useState<(VumaPrivateTripRequest & { requester?: Profile })[]>([]);
-  const [feeSettings, setFeeSettings] = useState<VumaPrivateFeeSettings>({ fee_type: "none", fee_amount: 0, currency: "USD" });
+  const [feeSettings, setFeeSettings] = useState<VumaPrivateFeeSettings>({ fee_type: "none", fee_amount: 0, fee_percentage: 0, currency: "USD" });
   const [savingFee, setSavingFee] = useState(false);
 
   async function load() {
@@ -38,7 +38,7 @@ export default function AdminVumaPrivatePage() {
     const { data: requesters } = await supabase.from("profiles").select("*").in("id", requesterIds.length ? requesterIds : ["-"]);
     setRequests((reqData || []).map((r: any) => ({ ...r, requester: (requesters as Profile[] || []).find((p) => p.id === r.requested_by) })));
 
-    const { data: fee } = await supabase.from("vuma_private_fee_settings").select("fee_type, fee_amount, currency").eq("id", true).single();
+    const { data: fee } = await supabase.from("vuma_private_fee_settings").select("fee_type, fee_amount, fee_percentage, currency").eq("id", true).single();
     if (fee) setFeeSettings(fee as VumaPrivateFeeSettings);
 
     setLoading(false);
@@ -54,7 +54,12 @@ export default function AdminVumaPrivatePage() {
     const res = await fetch("/api/admin/vuma-private/fee-settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ feeType: feeSettings.fee_type, feeAmount: feeSettings.fee_amount, currency: feeSettings.currency }),
+      body: JSON.stringify({
+        feeType: feeSettings.fee_type,
+        feeAmount: feeSettings.fee_amount,
+        feePercentage: feeSettings.fee_percentage,
+        currency: feeSettings.currency,
+      }),
     });
     setSavingFee(false);
     if (!res.ok) {
@@ -95,7 +100,8 @@ export default function AdminVumaPrivatePage() {
       <div className="card p-5 space-y-3">
         <p className="label">Membership fee</p>
         <p className="text-xs text-navy-400 -mt-1">
-          Shown to members as a "membership fee" — never framed as commission. Charged monthly or per trip.
+          Shown to members as a "membership fee" — never framed as commission. A monthly fee is a flat amount; a
+          per-trip fee is a percentage of that trip's cost-share amount, same as taxes and levies.
         </p>
         <div className="grid grid-cols-2 gap-3">
           <select
@@ -107,16 +113,29 @@ export default function AdminVumaPrivatePage() {
             <option value="monthly">Monthly</option>
             <option value="per_trip">Per trip</option>
           </select>
-          <input
-            type="number"
-            min={0}
-            step="0.01"
-            className="input"
-            placeholder="Amount"
-            value={feeSettings.fee_amount}
-            onChange={(e) => setFeeSettings((f) => ({ ...f, fee_amount: Number(e.target.value) }))}
-            disabled={feeSettings.fee_type === "none"}
-          />
+          {feeSettings.fee_type === "per_trip" ? (
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step="0.1"
+              className="input"
+              placeholder="Percentage (%)"
+              value={feeSettings.fee_percentage}
+              onChange={(e) => setFeeSettings((f) => ({ ...f, fee_percentage: Number(e.target.value) }))}
+            />
+          ) : (
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              className="input"
+              placeholder="Amount"
+              value={feeSettings.fee_amount}
+              onChange={(e) => setFeeSettings((f) => ({ ...f, fee_amount: Number(e.target.value) }))}
+              disabled={feeSettings.fee_type === "none"}
+            />
+          )}
         </div>
         <button className="btn-primary w-full" disabled={savingFee} onClick={saveFeeSettings}>
           {savingFee ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save

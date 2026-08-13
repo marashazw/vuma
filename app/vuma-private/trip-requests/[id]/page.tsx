@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useModal } from "@/components/ui/ModalProvider";
 import type { VumaPrivateTripRequest, VumaPrivateTripOffer, Profile } from "@/lib/types";
@@ -12,6 +13,7 @@ export default function TripRequestDetailPage({ params }: { params: Promise<{ id
   const { id: requestId } = use(params);
   const supabase = createClient();
   const modal = useModal();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [request, setRequest] = useState<(VumaPrivateTripRequest & { requester?: Profile }) | null>(null);
@@ -88,17 +90,27 @@ export default function TripRequestDetailPage({ params }: { params: Promise<{ id
 
   async function acceptOffer(offer: VumaPrivateTripOffer) {
     const ok = await modal.confirm(
-      `Accept this offer? ${offer.seats_available} seat(s) at ${request?.requested_by ? "" : ""}$${offer.cost_per_person.toFixed(2)} each. This locks the trip.`,
+      `Accept this offer? ${offer.seats_available} seat(s) at $${offer.cost_per_person.toFixed(2)} each. This locks the trip.`,
       { confirmLabel: "Accept & lock" }
     );
     if (!ok) return;
     setBusyOfferId(offer.id);
-    await supabase.from("vuma_private_trip_offers").update({ status: "accepted" }).eq("id", offer.id);
-    await supabase
-      .from("vuma_private_trip_requests")
-      .update({ status: "locked", accepted_offer_id: offer.id })
-      .eq("id", requestId);
+    const res = await fetch("/api/vuma-private/accept-offer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ offerId: offer.id }),
+    });
+    const data = await res.json();
     setBusyOfferId(null);
+    if (!res.ok) {
+      if (data.insufficientBalance || data.needsRenewal) {
+        const goToWallet = await modal.confirm(data.error, { confirmLabel: "Go to wallet" });
+        if (goToWallet) router.push("/vuma-private/wallet");
+        return;
+      }
+      await modal.alert(data.error || "Could not accept this offer.");
+      return;
+    }
     await load();
   }
 

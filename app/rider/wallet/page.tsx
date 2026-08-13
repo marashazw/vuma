@@ -6,8 +6,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useModal } from "@/components/ui/ModalProvider";
 import { currencyFormat } from "@/lib/commission";
-import type { WalletTransaction, RiderWalletTopup, VumaAssociateMembership } from "@/lib/types";
-import { Loader2, Wallet, ArrowUpRight, ArrowDownLeft, Upload, Paperclip, X, Clock, CheckCircle2, Users } from "lucide-react";
+import type { WalletTransaction, RiderWalletTopup, VumaAssociateMembership, VumaPrivateFeeSettings } from "@/lib/types";
+import { Loader2, Wallet, ArrowUpRight, ArrowDownLeft, Upload, Paperclip, X, Clock, CheckCircle2, Users, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -25,6 +25,8 @@ export default function WalletPage() {
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
   const [balance, setBalance] = useState(0);
+  const [feeSettings, setFeeSettings] = useState<VumaPrivateFeeSettings | null>(null);
+  const [renewing, setRenewing] = useState(false);
   const [currency, setCurrency] = useState("ZAR");
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [membership, setMembership] = useState<VumaAssociateMembership | null>(null);
@@ -73,6 +75,13 @@ export default function WalletPage() {
       .maybeSingle();
     setMembership(mem as VumaAssociateMembership | null);
 
+    const { data: fee } = await supabase
+      .from("vuma_private_fee_settings")
+      .select("fee_type, fee_amount, fee_percentage, currency")
+      .eq("id", true)
+      .single();
+    setFeeSettings(fee as VumaPrivateFeeSettings | null);
+
     const { data: pending } = await supabase
       .from("rider_wallet_topups")
       .select("*")
@@ -112,6 +121,19 @@ export default function WalletPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
+
+  async function renewMembership() {
+    setRenewing(true);
+    const res = await fetch("/api/vuma-private/renew-membership", { method: "POST" });
+    const data = await res.json();
+    setRenewing(false);
+    if (!res.ok) {
+      await modal.alert(data.error || "Could not renew membership.");
+      return;
+    }
+    await modal.alert(`Renewed — paid up until ${format(new Date(data.paidUpUntil), "d MMM yyyy")}.`);
+    await load();
+  }
 
   async function submitTopup() {
     if (!amount || Number(amount) <= 0 || !userId) return;
@@ -203,6 +225,26 @@ export default function WalletPage() {
         </p>
         <p className="fare-figure text-3xl font-bold text-gold-400">{currencyFormat(balance, currency)}</p>
       </div>
+
+      {feeSettings?.fee_type === "monthly" && isActiveMember && (
+        <div
+          className={`card p-5 ${membership?.paid_up_until && new Date(membership.paid_up_until) > new Date() ? "bg-jade-50 border-jade-200" : "bg-gold-50 border-gold-200"}`}
+        >
+          <p
+            className={`text-sm font-semibold flex items-center gap-1.5 ${membership?.paid_up_until && new Date(membership.paid_up_until) > new Date() ? "text-jade-700" : "text-gold-700"}`}
+          >
+            <RefreshCw className="w-4 h-4" /> Monthly Vuma Private membership fee
+          </p>
+          <p className="text-xs text-navy-500 mt-1 mb-3">
+            {membership?.paid_up_until && new Date(membership.paid_up_until) > new Date()
+              ? `Paid up until ${format(new Date(membership.paid_up_until), "d MMM yyyy")}.`
+              : "Not currently paid up — renew to lock a Vuma Private trip request."}
+          </p>
+          <button className="btn-primary w-full !text-sm" disabled={renewing} onClick={renewMembership}>
+            {renewing ? <Loader2 className="w-4 h-4 animate-spin" /> : `Renew — ${currencyFormat(Number(feeSettings.fee_amount), feeSettings.currency)}`}
+          </button>
+        </div>
+      )}
 
       {!isActiveMember ? (
         <div className="card p-5 bg-gold-50 border-gold-200">

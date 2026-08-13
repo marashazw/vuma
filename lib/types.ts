@@ -408,6 +408,7 @@ export interface VumaPrivateTripOffer {
 export interface VumaPrivateFeeSettings {
   fee_type: "monthly" | "per_trip" | "none";
   fee_amount: number;
+  fee_percentage: number;
   currency: string;
 }
 
