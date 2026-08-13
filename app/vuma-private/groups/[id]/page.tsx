@@ -256,9 +256,18 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
           <div className="space-y-2">
             {requests.map((r) => (
               <Link key={r.id} href={`/vuma-private/trip-requests/${r.id}`} className={`card p-4 block border ${statusColor[r.status]}`}>
-                <div className="flex items-center justify-between mb-1">
-                  <p className="font-semibold text-sm flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5" /> {r.destination_address}
+                <div className="flex items-center justify-between mb-1 gap-2">
+                  <p className="font-semibold text-sm flex items-center gap-1.5 min-w-0">
+                    <MapPin className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">
+                      {r.pickup_address ? (
+                        <>
+                          From <span className="text-navy-500 font-normal">{r.pickup_address.split(",")[0]}</span> to {r.destination_address}
+                        </>
+                      ) : (
+                        r.destination_address
+                      )}
+                    </span>
                   </p>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {r.visibility === "platform" && (

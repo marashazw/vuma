@@ -85,7 +85,14 @@ export default function VumaPrivateFeedPage() {
             {requests.map((r) => (
               <Link key={r.id} href={`/vuma-private/trip-requests/${r.id}`} className="card p-4 block border bg-jade-50 border-jade-200">
                 <p className="font-semibold text-sm flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5" /> {r.destination_address}
+                  <MapPin className="w-3.5 h-3.5 shrink-0" />
+                  {r.pickup_address ? (
+                    <span>
+                      From <span className="text-navy-500 font-normal">{r.pickup_address.split(",")[0]}</span> to {r.destination_address}
+                    </span>
+                  ) : (
+                    r.destination_address
+                  )}
                 </p>
                 <p className="text-xs flex items-center gap-3 opacity-80 mt-1">
                   <span className="flex items-center gap-1">
