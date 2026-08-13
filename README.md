@@ -1250,6 +1250,20 @@ simplified and should be hardened before handling real money and real users at s
     Discovering who's actually opted in required a small server-side route
     (`/api/vuma-private/cooptable-members`) rather than a direct client query, since
     membership rows aren't otherwise readable across different users at all.
+- **Bulk selection for admin approvals and revokes** — a reusable `BulkActionBar` component,
+  added to the three admin lists where "approve/reject/revoke" already meant reviewing several
+  similar items one at a time: Vuma Private membership approval and revocation, driver wallet
+  top-ups, and rider wallet top-ups. Each gets a select-all checkbox, per-item checkboxes, and
+  bulk action buttons that appear once at least one item is selected. Deliberately reuses the
+  existing single-item API routes in a sequential client-side loop rather than building
+  parallel bulk-specific endpoints — simpler, and reuses logic that was already correct rather
+  than risking a second, slightly different implementation of the same approval/rejection
+  rules.
+- **Vuma Private membership visibility in admin** — a small reusable `VumaPrivateBadge`
+  component now shows a rider's or driver's membership status (not a member / pending / active
+  / lapsed / revoked) on both their individual admin detail page and, more compactly, in the
+  riders and drivers list views, so admin doesn't need to open someone's profile just to check
+  whether they're a member.
 
 ## Publishing to Google Play Store
 

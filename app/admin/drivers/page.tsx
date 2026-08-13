@@ -5,13 +5,14 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { StatusPill } from "@/components/ui/StatusPill";
 import type { DriverProfile, Profile } from "@/lib/types";
-import { Loader2 } from "lucide-react";
+import { Loader2, Users } from "lucide-react";
 
 type Row = DriverProfile & { profile: Profile };
 
 export default function AdminDriversPage() {
   const supabase = createClient();
   const [rows, setRows] = useState<Row[]>([]);
+  const [memberIds, setMemberIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
 
@@ -23,6 +24,17 @@ export default function AdminDriversPage() {
       profile: (profiles || []).find((p) => p.id === dp.user_id) as Profile,
     }));
     setRows(merged);
+
+    const driverIds = merged.map((r) => r.user_id);
+    if (driverIds.length) {
+      const { data: memberships } = await supabase
+        .from("vuma_associates_memberships")
+        .select("profile_id")
+        .eq("status", "active")
+        .in("profile_id", driverIds);
+      setMemberIds(new Set((memberships || []).map((m) => m.profile_id)));
+    }
+
     setLoading(false);
   }
 
@@ -121,6 +133,11 @@ export default function AdminDriversPage() {
                 <td className="p-4 fare-figure">{r.rating_avg?.toFixed(1)} ★</td>
                 <td className="p-4">
                   <div className="flex flex-wrap gap-1">
+                    {memberIds.has(r.user_id) && (
+                      <span className="pill bg-jade-50 text-jade-700 !text-[10px] font-semibold flex items-center gap-1">
+                        <Users className="w-2.5 h-2.5" /> Vuma Private
+                      </span>
+                    )}
                     {r.deluxe_status === "certified" && (
                       <span className="pill bg-navy-800 text-gold-400 !text-[10px]">Deluxe</span>
                     )}

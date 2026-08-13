@@ -7,6 +7,7 @@ import { useModal } from "@/components/ui/ModalProvider";
 import type { VumaAssociateMembership, RideAccessRestriction, Profile } from "@/lib/types";
 import { Loader2, Users, Check, X, Power, Plus, ArrowRight, ShieldCheck } from "lucide-react";
 import { format } from "date-fns";
+import { BulkActionBar } from "@/components/admin/BulkActionBar";
 
 const emptyRestrictionForm = { scope: "all_rides" as "all_rides" | "deluxe_only", startsAt: "", endsAt: "", note: "" };
 
@@ -23,6 +24,9 @@ export default function AdminVumaAssociatesPage() {
   const [restrictionForm, setRestrictionForm] = useState(emptyRestrictionForm);
   const [submittingRestriction, setSubmittingRestriction] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [selectedPending, setSelectedPending] = useState<Set<string>>(new Set());
+  const [selectedActive, setSelectedActive] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   async function load() {
     const { data: mems } = await supabase
@@ -139,6 +143,46 @@ export default function AdminVumaAssociatesPage() {
       return;
     }
     await load();
+  }
+
+  async function bulkApprovePending() {
+    const ids = [...selectedPending];
+    if (!ids.length) return;
+    setBulkBusy(true);
+    for (const id of ids) {
+      await fetch(`/api/admin/vuma-associates/memberships/${id}/approve`, { method: "POST" });
+    }
+    setBulkBusy(false);
+    setSelectedPending(new Set());
+    await load();
+  }
+
+  async function bulkRevokeActive() {
+    const ids = [...selectedActive];
+    if (!ids.length) return;
+    const ok = await modal.confirm(`Revoke ${ids.length} membership${ids.length === 1 ? "" : "s"}? They'll lose access to member-only benefits.`, {
+      confirmLabel: "Revoke all",
+      danger: true,
+    });
+    if (!ok) return;
+    setBulkBusy(true);
+    for (const id of ids) {
+      await fetch(`/api/admin/vuma-associates/memberships/${id}/revoke`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "revoked" }),
+      });
+    }
+    setBulkBusy(false);
+    setSelectedActive(new Set());
+    await load();
+  }
+
+  function toggleOne(set: Set<string>, setSet: (s: Set<string>) => void, id: string) {
+    const next = new Set(set);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSet(next);
   }
 
   if (loading) {
@@ -285,10 +329,27 @@ export default function AdminVumaAssociatesPage() {
       <div>
         <p className="label mb-3">Awaiting confirmation ({pending.length})</p>
         {!pending.length && <p className="text-navy-400 text-sm">Nothing waiting on review.</p>}
+        {!!pending.length && (
+          <BulkActionBar
+            selectedCount={selectedPending.size}
+            totalCount={pending.length}
+            allSelected={selectedPending.size === pending.length}
+            onToggleSelectAll={() =>
+              setSelectedPending(selectedPending.size === pending.length ? new Set() : new Set(pending.map((m) => m.id)))
+            }
+            actions={[{ label: "Confirm paid up", onClick: bulkApprovePending, busy: bulkBusy }]}
+          />
+        )}
         <div className="space-y-2">
           {pending.map((m) => (
-            <div key={m.id} className="card p-4 flex items-center justify-between gap-3">
-              <div className="min-w-0">
+            <div key={m.id} className="card p-4 flex items-center gap-3">
+              <input
+                type="checkbox"
+                className="w-4 h-4 shrink-0 accent-gold-400"
+                checked={selectedPending.has(m.id)}
+                onChange={() => toggleOne(selectedPending, setSelectedPending, m.id)}
+              />
+              <div className="min-w-0 flex-1">
                 <p className="font-semibold text-sm text-navy-800">{m.profile?.full_name || "Member"}</p>
                 <p className="text-xs text-navy-400">
                   {m.role === "rider" ? "Rider" : "Driver"} · accepted constitution v{m.constitution_version} ·{" "}
@@ -307,10 +368,27 @@ export default function AdminVumaAssociatesPage() {
       <div>
         <p className="label mb-3">Active members ({active.length})</p>
         {!active.length && <p className="text-navy-400 text-sm">No active members yet.</p>}
+        {!!active.length && (
+          <BulkActionBar
+            selectedCount={selectedActive.size}
+            totalCount={active.length}
+            allSelected={selectedActive.size === active.length}
+            onToggleSelectAll={() =>
+              setSelectedActive(selectedActive.size === active.length ? new Set() : new Set(active.map((m) => m.id)))
+            }
+            actions={[{ label: "Revoke", onClick: bulkRevokeActive, danger: true, busy: bulkBusy }]}
+          />
+        )}
         <div className="space-y-2">
           {active.map((m) => (
-            <div key={m.id} className="card p-4 flex items-center justify-between gap-3">
-              <div className="min-w-0">
+            <div key={m.id} className="card p-4 flex items-center gap-3">
+              <input
+                type="checkbox"
+                className="w-4 h-4 shrink-0 accent-gold-400"
+                checked={selectedActive.has(m.id)}
+                onChange={() => toggleOne(selectedActive, setSelectedActive, m.id)}
+              />
+              <div className="min-w-0 flex-1">
                 <p className="font-semibold text-sm text-navy-800">{m.profile?.full_name || "Member"}</p>
                 <p className="text-xs text-navy-400">
                   {m.role === "rider" ? "Rider" : "Driver"} · active since{" "}

@@ -7,6 +7,7 @@ import { currencyFormat } from "@/lib/commission";
 import type { RiderWalletTopup, Profile } from "@/lib/types";
 import { Loader2, Paperclip, Check, X } from "lucide-react";
 import { format } from "date-fns";
+import { BulkActionBar } from "@/components/admin/BulkActionBar";
 
 export default function AdminRiderWalletTopupsPage() {
   const supabase = createClient();
@@ -17,6 +18,8 @@ export default function AdminRiderWalletTopupsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rejectReasonId, setRejectReasonId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   async function load() {
     const { data } = await supabase.from("rider_wallet_topups").select("*").order("created_at", { ascending: false });
@@ -70,6 +73,46 @@ export default function AdminRiderWalletTopupsPage() {
     setBusyId(null);
   }
 
+  async function bulkApprove() {
+    const ids = [...selected];
+    if (!ids.length) return;
+    setBulkBusy(true);
+    for (const id of ids) {
+      await fetch(`/api/admin/rider-wallet-topups/${id}/approve`, { method: "POST" });
+    }
+    setBulkBusy(false);
+    setSelected(new Set());
+    await load();
+  }
+
+  async function bulkReject() {
+    const ids = [...selected];
+    if (!ids.length) return;
+    const ok = await modal.confirm(`Reject ${ids.length} top-up${ids.length === 1 ? "" : "s"}?`, {
+      confirmLabel: "Reject all",
+      danger: true,
+    });
+    if (!ok) return;
+    setBulkBusy(true);
+    for (const id of ids) {
+      await fetch(`/api/admin/rider-wallet-topups/${id}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rejectionReason: "Rejected by admin (bulk)" }),
+      });
+    }
+    setBulkBusy(false);
+    setSelected(new Set());
+    await load();
+  }
+
+  function toggleOne(id: string) {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelected(next);
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24 text-navy-300">
@@ -93,11 +136,26 @@ export default function AdminRiderWalletTopupsPage() {
       <div>
         <p className="label mb-3">Pending ({pending.length})</p>
         {!pending.length && <p className="text-navy-400 text-sm">Nothing waiting on review.</p>}
+        {!!pending.length && (
+          <BulkActionBar
+            selectedCount={selected.size}
+            totalCount={pending.length}
+            allSelected={selected.size === pending.length}
+            onToggleSelectAll={() => setSelected(selected.size === pending.length ? new Set() : new Set(pending.map((t) => t.id)))}
+            actions={[
+              { label: "Approve", onClick: bulkApprove, busy: bulkBusy },
+              { label: "Reject", onClick: bulkReject, danger: true, busy: bulkBusy },
+            ]}
+          />
+        )}
         <div className="space-y-3">
           {pending.map((t) => (
             <div key={t.id} className="card p-5">
               <div className="flex items-center justify-between mb-2">
-                <p className="font-semibold">{t.rider?.full_name || "Rider"}</p>
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <input type="checkbox" className="w-4 h-4 accent-gold-400" checked={selected.has(t.id)} onChange={() => toggleOne(t.id)} />
+                  <p className="font-semibold">{t.rider?.full_name || "Rider"}</p>
+                </label>
                 <p className="fare-figure text-lg font-bold">{currencyFormat(t.amount, t.currency)}</p>
               </div>
               <p className="text-xs text-navy-400 mb-3">{format(new Date(t.created_at), "d MMM yyyy, HH:mm")}</p>

@@ -10,6 +10,7 @@ import type { DriverProfile, Profile } from "@/lib/types";
 import { Loader2, ArrowLeft, FileText, CheckCircle2, XCircle, Sparkles, UserX } from "lucide-react";
 import { useModal } from "@/components/ui/ModalProvider";
 import { format } from "date-fns";
+import { VumaPrivateBadge } from "@/components/admin/VumaPrivateBadge";
 
 const DOC_FIELDS: { key: keyof DriverProfile; label: string }[] = [
   { key: "id_document_path", label: "Government-issued ID" },
@@ -33,12 +34,16 @@ export default function AdminDriverReviewPage({ params }: { params: Promise<{ id
   const [deluxeNotes, setDeluxeNotes] = useState("");
   const [deluxeNextInspection, setDeluxeNextInspection] = useState("");
   const [deluxeBusy, setDeluxeBusy] = useState(false);
+  const [vumaPrivateStatus, setVumaPrivateStatus] = useState<string | null>(null);
 
   async function load() {
     const { data: p } = await supabase.from("profiles").select("*").eq("id", id).single();
     const { data: dp } = await supabase.from("driver_profiles").select("*").eq("user_id", id).single();
     setProfile(p as Profile);
     setDriver(dp as DriverProfile);
+
+    const { data: membership } = await supabase.from("vuma_associates_memberships").select("status").eq("profile_id", id).maybeSingle();
+    setVumaPrivateStatus(membership?.status || null);
 
     const urls: Record<string, string> = {};
     for (const field of DOC_FIELDS) {
@@ -121,6 +126,9 @@ export default function AdminDriverReviewPage({ params }: { params: Promise<{ id
         <div>
           <h1 className="text-2xl font-bold">{profile.full_name}</h1>
           <p className="text-navy-400 text-sm">{profile.phone || profile.email}</p>
+          <div className="mt-2">
+            <VumaPrivateBadge status={vumaPrivateStatus} />
+          </div>
         </div>
         <StatusPill status={driver.verification_status} />
       </div>

@@ -10,6 +10,7 @@ import { COUNTRIES } from "@/lib/constants";
 import type { Profile, Ride, CountryCode } from "@/lib/types";
 import { Loader2, ArrowLeft, Wallet, Flag, Gift, Repeat } from "lucide-react";
 import { format } from "date-fns";
+import { VumaPrivateBadge } from "@/components/admin/VumaPrivateBadge";
 
 interface CreditReceived {
   id: string;
@@ -35,11 +36,15 @@ export default function AdminRiderDetailPage({ params }: { params: Promise<{ id:
   const [creditReceived, setCreditReceived] = useState<CreditReceived[]>([]);
   const [strikes, setStrikes] = useState<Strike[]>([]);
   const [availableCredits, setAvailableCredits] = useState(0);
+  const [vumaPrivateStatus, setVumaPrivateStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   async function load() {
     const { data: p } = await supabase.from("profiles").select("*").eq("id", id).single();
     setProfile(p as Profile);
+
+    const { data: membership } = await supabase.from("vuma_associates_memberships").select("status").eq("profile_id", id).maybeSingle();
+    setVumaPrivateStatus(membership?.status || null);
 
     const { data: rideData } = await supabase
       .from("rides")
@@ -105,6 +110,9 @@ export default function AdminRiderDetailPage({ params }: { params: Promise<{ id:
         <div>
           <h1 className="text-2xl font-bold">{profile.full_name}</h1>
           <p className="text-navy-400 text-sm">{profile.phone || profile.email}</p>
+          <div className="mt-2">
+            <VumaPrivateBadge status={vumaPrivateStatus} />
+          </div>
         </div>
         <p className="text-xs text-navy-400">Joined {format(new Date(profile.created_at), "d MMM yyyy")}</p>
       </div>

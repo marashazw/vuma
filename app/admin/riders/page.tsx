@@ -4,15 +4,25 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/types";
-import { Loader2, Search, ShieldAlert, Snowflake } from "lucide-react";
+import { Loader2, Search, ShieldAlert, Snowflake, Users } from "lucide-react";
 import { format } from "date-fns";
 
 export default function AdminRidersPage() {
   const supabase = createClient();
   const [query, setQuery] = useState("");
   const [riders, setRiders] = useState<Profile[]>([]);
+  const [memberIds, setMemberIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
+
+  async function loadMembership(riderIds: string[]) {
+    if (!riderIds.length) {
+      setMemberIds(new Set());
+      return;
+    }
+    const { data } = await supabase.from("vuma_associates_memberships").select("profile_id").eq("status", "active").in("profile_id", riderIds);
+    setMemberIds(new Set((data || []).map((m) => m.profile_id)));
+  }
 
   async function loadRecent() {
     setLoading(true);
@@ -23,6 +33,7 @@ export default function AdminRidersPage() {
       .order("created_at", { ascending: false })
       .limit(30);
     setRiders((data as Profile[]) || []);
+    await loadMembership((data || []).map((r) => r.id));
     setLoading(false);
   }
 
@@ -44,6 +55,7 @@ export default function AdminRidersPage() {
       .or(`full_name.ilike.%${query}%,phone.ilike.%${query}%,email.ilike.%${query}%`)
       .limit(30);
     setRiders((data as Profile[]) || []);
+    await loadMembership((data || []).map((r) => r.id));
     setSearching(false);
   }
 
@@ -83,6 +95,11 @@ export default function AdminRidersPage() {
                     {r.full_name}
                     {isFrozen && <Snowflake className="w-3.5 h-3.5 text-coral-500" />}
                     {r.scheduled_ride_strikes > 0 && <ShieldAlert className="w-3.5 h-3.5 text-gold-500" />}
+                    {memberIds.has(r.id) && (
+                      <span title="Vuma Private member">
+                        <Users className="w-3.5 h-3.5 text-jade-500" />
+                      </span>
+                    )}
                   </p>
                   <p className="text-xs text-navy-400">{r.phone || r.email || "—"}</p>
                 </div>
