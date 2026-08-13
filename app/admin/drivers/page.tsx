@@ -1,20 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { StatusPill } from "@/components/ui/StatusPill";
 import type { DriverProfile, Profile } from "@/lib/types";
-import { Loader2, Users } from "lucide-react";
+import { Loader2, Users, ArrowUpDown } from "lucide-react";
 
 type Row = DriverProfile & { profile: Profile };
+type SortKey = "name" | "verification" | "rating_desc" | "rating_asc" | "commission_mode" | "subscription_plan" | "vuma_private" | "deluxe" | "online";
+
+const MEMBERSHIP_RANK: Record<string, number> = { active: 0, pending: 1, lapsed: 2, revoked: 3, none: 4 };
+const DELUXE_RANK: Record<string, number> = { certified: 0, pending: 1, expired: 2, none: 3 };
 
 export default function AdminDriversPage() {
   const supabase = createClient();
   const [rows, setRows] = useState<Row[]>([]);
-  const [memberIds, setMemberIds] = useState<Set<string>>(new Set());
+  const [membershipStatus, setMembershipStatus] = useState<Record<string, string>>({});
+  const [subscriptionPlan, setSubscriptionPlan] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortKey>("name");
 
   async function load() {
     const { data: profiles } = await supabase.from("profiles").select("*").eq("role", "driver");
@@ -27,12 +33,27 @@ export default function AdminDriversPage() {
 
     const driverIds = merged.map((r) => r.user_id);
     if (driverIds.length) {
-      const { data: memberships } = await supabase
-        .from("vuma_associates_memberships")
-        .select("profile_id")
-        .eq("status", "active")
-        .in("profile_id", driverIds);
-      setMemberIds(new Set((memberships || []).map((m) => m.profile_id)));
+      const { data: memberships } = await supabase.from("vuma_associates_memberships").select("profile_id, status").in("profile_id", driverIds);
+      const memberMap: Record<string, string> = {};
+      (memberships || []).forEach((m) => (memberMap[m.profile_id] = m.status));
+      setMembershipStatus(memberMap);
+
+      // Same status/window logic already used for commission resolution
+      // and the driver's own subscription page — the most recently
+      // created row that's still within its own window, active or
+      // waived (a free-granted subscription counts too).
+      const { data: subs } = await supabase
+        .from("driver_subscriptions")
+        .select("driver_id, status, ends_at, plan:subscription_plans(name)")
+        .in("driver_id", driverIds)
+        .in("status", ["active", "waived"])
+        .gte("ends_at", new Date().toISOString())
+        .order("created_at", { ascending: false });
+      const planMap: Record<string, string> = {};
+      (subs || []).forEach((s: any) => {
+        if (!planMap[s.driver_id]) planMap[s.driver_id] = s.plan?.name || "—";
+      });
+      setSubscriptionPlan(planMap);
     }
 
     setLoading(false);
@@ -54,6 +75,39 @@ export default function AdminDriversPage() {
     setSavingId(null);
   }
 
+  const sortedRows = useMemo(() => {
+    const copy = [...rows];
+    switch (sortBy) {
+      case "verification":
+        return copy.sort((a, b) => a.verification_status.localeCompare(b.verification_status));
+      case "rating_desc":
+        return copy.sort((a, b) => (b.rating_avg || 0) - (a.rating_avg || 0));
+      case "rating_asc":
+        return copy.sort((a, b) => (a.rating_avg || 0) - (b.rating_avg || 0));
+      case "commission_mode":
+        return copy.sort((a, b) => a.commission_mode.localeCompare(b.commission_mode));
+      case "subscription_plan":
+        return copy.sort((a, b) => (subscriptionPlan[a.user_id] || "").localeCompare(subscriptionPlan[b.user_id] || ""));
+      case "vuma_private":
+        return copy.sort((a, b) => {
+          const rankA = MEMBERSHIP_RANK[membershipStatus[a.user_id] || "none"];
+          const rankB = MEMBERSHIP_RANK[membershipStatus[b.user_id] || "none"];
+          return rankA - rankB || (a.profile?.full_name || "").localeCompare(b.profile?.full_name || "");
+        });
+      case "deluxe":
+        return copy.sort((a, b) => {
+          const rankA = DELUXE_RANK[a.deluxe_status || "none"] ?? DELUXE_RANK.none;
+          const rankB = DELUXE_RANK[b.deluxe_status || "none"] ?? DELUXE_RANK.none;
+          return rankA - rankB || (a.profile?.full_name || "").localeCompare(b.profile?.full_name || "");
+        });
+      case "online":
+        return copy.sort((a, b) => (a.is_online === b.is_online ? 0 : a.is_online ? -1 : 1));
+      case "name":
+      default:
+        return copy.sort((a, b) => (a.profile?.full_name || "").localeCompare(b.profile?.full_name || ""));
+    }
+  }, [rows, sortBy, membershipStatus, subscriptionPlan]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24 text-navy-300">
@@ -66,6 +120,21 @@ export default function AdminDriversPage() {
     <div className="space-y-5">
       <h1 className="text-2xl font-bold">Drivers ({rows.length})</h1>
 
+      <label className="flex items-center gap-2 text-xs text-navy-500">
+        <ArrowUpDown className="w-3.5 h-3.5 shrink-0" /> Sort by
+        <select className="input !py-1.5 !text-xs !w-auto" value={sortBy} onChange={(e) => setSortBy(e.target.value as SortKey)}>
+          <option value="name">Name (A–Z)</option>
+          <option value="verification">Verification status</option>
+          <option value="rating_desc">Rating (highest first)</option>
+          <option value="rating_asc">Rating (lowest first)</option>
+          <option value="commission_mode">Commission mode</option>
+          <option value="subscription_plan">Subscription plan</option>
+          <option value="vuma_private">Vuma Private membership</option>
+          <option value="deluxe">Vuma Deluxe status</option>
+          <option value="online">Online first</option>
+        </select>
+      </label>
+
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -74,6 +143,7 @@ export default function AdminDriversPage() {
               <th className="p-4 font-medium">Verification</th>
               <th className="p-4 font-medium">Online</th>
               <th className="p-4 font-medium">Commission mode</th>
+              <th className="p-4 font-medium">Subscription</th>
               <th className="p-4 font-medium">Override %</th>
               <th className="p-4 font-medium">Rating</th>
               <th className="p-4 font-medium">Badges</th>
@@ -81,7 +151,7 @@ export default function AdminDriversPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {sortedRows.map((r) => (
               <tr key={r.user_id} className="border-b border-navy-50 last:border-0">
                 <td className="p-4">
                   <p className="font-semibold">{r.profile?.full_name}</p>
@@ -116,6 +186,7 @@ export default function AdminDriversPage() {
                     <option value="subscription">subscription</option>
                   </select>
                 </td>
+                <td className="p-4 text-xs text-navy-500">{subscriptionPlan[r.user_id] || "—"}</td>
                 <td className="p-4">
                   <input
                     type="number"
@@ -133,9 +204,14 @@ export default function AdminDriversPage() {
                 <td className="p-4 fare-figure">{r.rating_avg?.toFixed(1)} ★</td>
                 <td className="p-4">
                   <div className="flex flex-wrap gap-1">
-                    {memberIds.has(r.user_id) && (
+                    {membershipStatus[r.user_id] === "active" && (
                       <span className="pill bg-jade-50 text-jade-700 !text-[10px] font-semibold flex items-center gap-1">
                         <Users className="w-2.5 h-2.5" /> Vuma Private
+                      </span>
+                    )}
+                    {membershipStatus[r.user_id] === "pending" && (
+                      <span className="pill bg-gold-50 text-gold-600 !text-[10px] font-semibold flex items-center gap-1">
+                        <Users className="w-2.5 h-2.5" /> Vuma Private pending
                       </span>
                     )}
                     {r.deluxe_status === "certified" && (
@@ -143,6 +219,9 @@ export default function AdminDriversPage() {
                     )}
                     {r.deluxe_status === "pending" && (
                       <span className="pill bg-gold-100 text-gold-700 !text-[10px] font-semibold">Deluxe application pending</span>
+                    )}
+                    {r.deluxe_status === "expired" && (
+                      <span className="pill bg-coral-500/10 text-coral-600 !text-[10px] font-semibold">Deluxe expired</span>
                     )}
                     {(Array.isArray(r.badges) ? r.badges : []).map((b) => (
                       <span key={b} className="pill bg-navy-800 text-gold-400 !text-[10px]">

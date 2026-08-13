@@ -1291,6 +1291,24 @@ simplified and should be hardened before handling real money and real users at s
   / lapsed / revoked) on both their individual admin detail page and, more compactly, in the
   riders and drivers list views, so admin doesn't need to open someone's profile just to check
   whether they're a member.
+- **Sort by, on the riders and drivers admin lists** — client-side sorting (the lists are
+  already loaded in full, so no need to round-trip to the server just to reorder what's
+  already there). Riders: most/oldest recently joined, name, Vuma Private membership,
+  scheduled-ride strikes, frozen accounts first. Drivers: name, verification status, rating
+  (either direction), commission mode, subscription plan, Vuma Private membership, online
+  first. Sorting by a status (membership, or the equivalent priority order used elsewhere in
+  this app) uses a defined rank — active first, then pending, lapsed, revoked, none — rather
+  than an arbitrary string sort that would put them in a not-especially-useful alphabetical
+  order. The drivers list didn't previously show subscription plan at all (only the binary
+  `commission_mode`, per-ride vs subscription, not which plan) — added a new column and the
+  underlying query for it, reusing the same active-or-waived, not-yet-expired, most-recent
+  lookup already proven correct in commission resolution and the driver's own subscription
+  page. **Added Vuma Deluxe status as a further sort option in a later round**, same rank-based
+  approach (certified, then pending, then expired, then none). Caught a related gap while
+  adding it: the existing badge display only ever rendered something for `certified` or
+  `pending` — a driver whose Deluxe certification had lapsed to `expired` showed no indicator
+  in the list at all, even though that's arguably the status most worth an admin noticing (a
+  previously-certified driver who may need re-inspection). Added a badge for that state too.
 
 ## Publishing to Google Play Store
 
