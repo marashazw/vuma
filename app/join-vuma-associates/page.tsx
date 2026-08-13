@@ -64,7 +64,7 @@ function JoinVumaAssociatesContent() {
             <Logo />
           </div>
           <div className="card p-6">
-            <h1 className="text-xl font-bold text-navy-800 mb-1">Vuma Associates Constitution</h1>
+            <h1 className="text-xl font-bold text-navy-800 mb-1">Vuma Private Constitution</h1>
             <p className="text-sm text-navy-400 mb-6">Read it through, then accept below to join.</p>
             <div className="max-h-[50vh] overflow-y-auto border border-navy-100 rounded-lg p-4 mb-5">
               <ConstitutionContent />
@@ -92,7 +92,7 @@ function JoinVumaAssociatesContent() {
 
         {/* Leads with the actual outcome of what they just did, and the
             thing they came here to do in the first place — booking a ride
-            or starting to drive. Vuma Associates is a secondary,
+            or starting to drive. Vuma Private is a secondary,
             lower-pressure mention below, not the headline of this page. */}
         <div className="card p-6 text-center mb-5">
           <CheckCircle2 className="w-10 h-10 text-jade-500 mx-auto mb-3" />
@@ -105,7 +105,7 @@ function JoinVumaAssociatesContent() {
 
         <div className="card p-5 text-center">
           <Users className="w-7 h-7 text-gold-500 mx-auto mb-2" />
-          <p className="text-sm font-semibold text-navy-700 mb-1">Also, want to join Vuma Associates?</p>
+          <p className="text-sm font-semibold text-navy-700 mb-1">Also, want to join Vuma Private?</p>
           <p className="text-xs text-navy-500 mb-4">
             A membership-based networking society for Vuma riders and drivers — helping each other with
             transportation, entrepreneurship ideas, and mentorship for success. More benefits will be added

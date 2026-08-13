@@ -766,9 +766,13 @@ built with Next.js 16 + Supabase, ready to deploy on Vercel.
 45. Then run `supabase/migrations/044_require_verification_for_topup.sql` — tightens the wallet
     top-up insert policy to require an actually-verified driver, at the database level, not
     just hidden in the UI.
-46. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
+46. Then run `supabase/migrations/045_vuma_private.sql` — the Vuma Private cost-sharing club:
+    groups, trip requests, and cost-share offers with a database-level no-markup constraint.
+    See the feature description below for the full reasoning, including what's deliberately
+    not yet built.
+47. Then run `supabase/seed.sql` (optional but recommended — adds starter subscription plans
     for both ZA and ZW so the driver subscription page isn't empty).
-47. Go to Project Settings → API and copy:
+48. Go to Project Settings → API and copy:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ keep this secret — never expose it
@@ -1143,6 +1147,66 @@ simplified and should be hardened before handling real money and real users at s
   the wallet page itself replaces the top-up form with an explanation and a link to
   verification when it isn't. The database check is the actual enforcement boundary — the UI
   change alone would only have hidden the form, not prevented a direct request.
+
+- **Vuma Private — a private, group-scoped cost-sharing club, genuinely distinct from the main
+  marketplace, not a rebrand in name only.** Built following a real jurisdictional constraint:
+  in places where a private car can't legally participate in commercial ride-hailing for
+  profit, this reframes the whole interaction as *"who from my circle is already going and has
+  space?"* rather than *"hire a driver."* The three things that make this legally different
+  from the main marketplace are enforced structurally, not just in copy:
+  - **No public advertising** — a trip request only exists inside a private, invite-code-only
+    group. RLS policies on every Vuma Private table (`vuma_private_groups`,
+    `_group_members`, `_trip_requests`, `_trip_offers`) restrict visibility to a group's own
+    members; there's no path to a public feed anywhere.
+  - **No profit, enforced at the database level** — `vuma_private_trip_offers` has a
+    `no_markup` check constraint: a driver's cost-per-person figure can't add up to more than
+    the estimated total cost across everyone riding (with 1 unit of rounding slack for
+    practical splitting, not profit margin). A client-side calculator suggests the fair split,
+    but the constraint is what actually prevents a markup from ever being stored, even if the
+    UI number were bypassed.
+  - **Driver-initiates, requester-doesn't-hire** — the flow only ever lets a member reply to an
+    existing request with a trip *they* were already offering to make; there's no way to
+    solicit or assign a specific driver.
+  - **Legal notice, verbatim as specified**, shown on every trip request's detail page: "This
+    feature connects members of a private group who already know each other... This does not
+    create an employer-employee or commercial transport relationship." Also incorporated into
+    the rebranded constitution (see below).
+  - **Membership rebranded, not duplicated** — this reuses the existing membership
+    infrastructure (constitution acceptance, pending/active status, admin approval) built for
+    the earlier "Vuma Associates" concept, renamed to Vuma Private and repurposed around this
+    cost-share framing rather than the original networking/mentorship framing. Internal table
+    and route names deliberately kept as `vuma_associates_*` / `/admin/vuma-associates` — a
+    global rename across every reference would be high-risk for zero functional benefit; only
+    the user-facing text needed to change, and every occurrence of the displayed brand name
+    was updated accordingly. The constitution itself was fully rewritten (now version 2.0) to
+    center the cost-share club purpose, the Ride Request Notice, group rules, and how a trip
+    request/offer/acceptance actually works, using the specified language directly rather than
+    paraphrasing it.
+  - **UI**: a role-agnostic hub at `/vuma-private` (anyone — rider or driver — can post a
+    request or make an offer; this isn't tied to the main app's rider/driver role split, since
+    both sides of a cost-share genuinely can be either), a group page for posting/browsing trip
+    requests using the specified copy ("Need Help With A Trip?" / "Ask My Group"), and a trip
+    request page with the cost-split calculator and offer acceptance. A small, low-key
+    discovery link appears on both the rider and driver dashboards ("Try Vuma Private —
+    cost-share with your own group"), and a "Switch to regular Vuma" link sits in the Vuma
+    Private header — satisfying the requirement that members can move freely between the two
+    without either being the default.
+  - **Admin**: a new oversight console (`/admin/vuma-private`, distinct from the existing
+    membership-approval page, now labelled "Vuma Private Members" in the nav to disambiguate)
+    covering all groups with member counts, recent trip request activity for safety
+    monitoring, and membership fee settings (monthly or per-trip, explicitly described to
+    admin as framed to members as a fee, never a commission).
+  - **Deliberately not yet built, given the scope of everything above** — flagged honestly
+    rather than silently left out: automatic fee deduction from a member's wallet (the fee
+    *settings* exist and are admin-configurable, but nothing yet actually charges a member
+    monthly or per-trip — this needs a scheduled/triggered deduction mechanism, the same kind
+    of "no reliable cron on this hosting tier" constraint already documented for the sweep
+    routes elsewhere in this file); group management UI beyond create/join (no way to leave a
+    group, remove a member, or rename one from the UI yet); and a trip request's own
+    cancellation/decline flow (an offer can be made and accepted, but there's no explicit way
+    for a requester to cancel a request or a driver to withdraw an offer once made, beyond
+    direct database access). These are the natural next round of work on top of a functioning
+    core.
 
 ## Publishing to Google Play Store
 

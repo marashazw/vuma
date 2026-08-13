@@ -66,9 +66,9 @@ export default function ConstitutionPage() {
       </header>
 
       <div className="max-w-3xl mx-auto px-5 py-10">
-        <h1 className="text-3xl font-bold mb-2">Vuma Associates Constitution</h1>
+        <h1 className="text-3xl font-bold mb-2">Vuma Private Constitution</h1>
         <p className="text-navy-400 text-sm mb-6">
-          Shown to anyone joining Vuma Associates during sign-up, and available here for reference at any time.
+          Shown to anyone joining Vuma Private during sign-up, and available here for reference at any time.
         </p>
 
         {loading ? (
@@ -77,7 +77,7 @@ export default function ConstitutionPage() {
           </div>
         ) : !userId ? (
           <div className="card p-5 mb-8 bg-navy-50">
-            <p className="text-sm text-navy-600 mb-3">Sign up or log in to join Vuma Associates.</p>
+            <p className="text-sm text-navy-600 mb-3">Sign up or log in to join Vuma Private.</p>
             <div className="grid grid-cols-2 gap-3">
               <Link href="/login" className="btn-ghost text-center">
                 Log in
@@ -90,7 +90,7 @@ export default function ConstitutionPage() {
         ) : membershipStatus === "active" ? (
           <div className="card p-5 mb-8 bg-jade-50 border-jade-200 flex items-center gap-2.5">
             <CheckCircle2 className="w-5 h-5 text-jade-600 shrink-0" />
-            <p className="text-sm font-semibold text-jade-700">You're an active Vuma Associates member.</p>
+            <p className="text-sm font-semibold text-jade-700">You're an active Vuma Private member.</p>
           </div>
         ) : membershipStatus === "pending" ? (
           <div className="card p-5 mb-8 bg-gold-50 border-gold-200 flex items-center gap-2.5">
@@ -102,10 +102,10 @@ export default function ConstitutionPage() {
         ) : (
           <div className="card p-5 mb-8">
             <p className="text-sm text-navy-600 mb-3">
-              Read the constitution below, then accept it to apply to join Vuma Associates.
+              Read the constitution below, then accept it to apply to join Vuma Private.
             </p>
             <button className="btn-primary w-full" disabled={submitting} onClick={join}>
-              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} I accept — join Vuma Associates
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} I accept — join Vuma Private
             </button>
           </div>
         )}

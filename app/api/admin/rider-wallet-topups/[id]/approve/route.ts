@@ -30,7 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     amount: Number(topup.amount),
     currency: topup.currency,
     created_by: user.id,
-    notes: topup.reference_code ? `Vuma Associates top-up approved (ref: ${topup.reference_code})` : "Vuma Associates top-up approved",
+    notes: topup.reference_code ? `Vuma Private top-up approved (ref: ${topup.reference_code})` : "Vuma Private top-up approved",
   });
 
   await admin

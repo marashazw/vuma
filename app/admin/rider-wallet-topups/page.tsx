@@ -86,7 +86,7 @@ export default function AdminRiderWalletTopupsPage() {
       <div>
         <h1 className="text-2xl font-bold">Rider Wallet Top-ups</h1>
         <p className="text-navy-400 text-sm mt-1">
-          Review and approve Vuma Associates member requests to top up their own rider wallet directly.
+          Review and approve Vuma Private member requests to top up their own rider wallet directly.
         </p>
       </div>
 

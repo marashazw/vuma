@@ -158,7 +158,7 @@ export default function AdminVumaAssociatesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Users className="w-6 h-6 text-gold-500" /> Vuma Associates
+            <Users className="w-6 h-6 text-gold-500" /> Vuma Private
           </h1>
           <p className="text-navy-400 text-sm mt-1">
             {active.length} active member{active.length === 1 ? "" : "s"} · {pending.length} awaiting confirmation
@@ -182,7 +182,7 @@ export default function AdminVumaAssociatesPage() {
           />
           <span className="text-sm text-navy-600">
             <span className="font-semibold flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5" /> Require Vuma Associates membership to register as a driver
+              <ShieldCheck className="w-3.5 h-3.5" /> Require Vuma Private membership to register as a driver
             </span>
             <span className="text-xs text-navy-400 block mt-0.5">
               When on, a new driver cannot submit verification for review until they have an active membership.

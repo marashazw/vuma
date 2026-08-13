@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { LocationSearchInput } from "@/components/map/LocationSearchInput";
@@ -336,6 +337,14 @@ export default function RiderHomePage() {
         <h1 className="text-2xl font-bold">Where to?</h1>
         <p className="text-navy-400 text-sm mt-1">Set your route, then name the fare you want to pay.</p>
       </div>
+
+      <Link
+        href="/vuma-private"
+        className="flex items-center justify-between text-xs text-navy-400 hover:text-navy-600 -mt-2"
+      >
+        <span>Going with people you know? Try Vuma Private — cost-share with your own group</span>
+        <span className="shrink-0 ml-2">→</span>
+      </Link>
 
       <div className="card">
         <div className="h-56 overflow-hidden rounded-t-xl2 relative">

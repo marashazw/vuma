@@ -16,7 +16,7 @@ const TYPE_LABELS: Record<string, string> = {
   redeemed: "Applied to a ride",
   refunded: "Refunded (ride cancelled)",
   admin_adjustment: "Adjustment by admin",
-  topup: "Wallet top-up (Vuma Associates)",
+  topup: "Wallet top-up (Vuma Private)",
 };
 
 export default function WalletPage() {
@@ -211,12 +211,12 @@ export default function WalletPage() {
           </p>
           <p className="text-xs text-navy-500 mt-1 mb-3">
             {membership?.status === "pending"
-              ? "Your Vuma Associates membership is awaiting confirmation — direct top-ups unlock once you're an active member."
-              : "That's a Vuma Associates member benefit — join to add funds to your wallet directly, separate from change credit."}
+              ? "Your Vuma Private membership is awaiting confirmation — direct top-ups unlock once you're an active member."
+              : "That's a Vuma Private member benefit — join to add funds to your wallet directly, separate from change credit."}
           </p>
           {!membership && (
             <Link href="/vuma-associates/constitution" className="btn-primary w-full !text-sm text-center block">
-              Learn about Vuma Associates
+              Learn about Vuma Private
             </Link>
           )}
         </div>

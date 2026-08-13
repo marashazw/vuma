@@ -330,6 +330,14 @@ export default function DriverHomePage() {
     <div className="space-y-5">
       <TripReminder role="driver" />
 
+      <Link
+        href="/vuma-private"
+        className="flex items-center justify-between text-xs text-navy-400 hover:text-navy-600"
+      >
+        <span>Have your own circle to help with rides? Try Vuma Private — cost-share, no fares</span>
+        <span className="shrink-0 ml-2">→</span>
+      </Link>
+
       {lowBalance?.isLow && (
         <Link href="/driver/wallet" className="card p-4 flex items-center gap-2.5 bg-gold-50 border-gold-200 block">
           <AlertTriangle className="w-4 h-4 text-gold-600 shrink-0" />

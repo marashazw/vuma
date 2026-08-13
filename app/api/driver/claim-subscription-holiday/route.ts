@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     .eq("profile_id", user.id)
     .maybeSingle();
   if (membership?.status !== "active") {
-    return NextResponse.json({ error: "An active Vuma Associates membership is required to claim this" }, { status: 403 });
+    return NextResponse.json({ error: "An active Vuma Private membership is required to claim this" }, { status: 403 });
   }
 
   const { data: offer } = await admin.from("subscription_holiday_offers").select("*, plan:subscription_plans(*)").eq("id", offerId).single();
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       starts_at: now.toISOString(),
       ends_at: endsAt,
       amount_paid: 0,
-      waived_reason: "Vuma Associates subscription holiday",
+      waived_reason: "Vuma Private subscription holiday",
     })
     .select()
     .single();

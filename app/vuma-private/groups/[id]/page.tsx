@@ -1,0 +1,174 @@
+"use client";
+
+import { useEffect, useState, use } from "react";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import { useModal } from "@/components/ui/ModalProvider";
+import type { VumaPrivateGroup, VumaPrivateTripRequest, Profile } from "@/lib/types";
+import { Loader2, Plus, ArrowLeft, MapPin, Users2, Calendar } from "lucide-react";
+import { format } from "date-fns";
+
+export default function GroupDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: groupId } = use(params);
+  const supabase = createClient();
+  const modal = useModal();
+  const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [group, setGroup] = useState<VumaPrivateGroup | null>(null);
+  const [requests, setRequests] = useState<(VumaPrivateTripRequest & { requester?: Profile })[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({ destination: "", when: "", seats: 1, note: "" });
+
+  async function load() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    setUserId(user.id);
+
+    const { data: g } = await supabase.from("vuma_private_groups").select("*").eq("id", groupId).single();
+    setGroup(g as VumaPrivateGroup);
+
+    const { data: reqs } = await supabase
+      .from("vuma_private_trip_requests")
+      .select("*")
+      .eq("group_id", groupId)
+      .order("needed_at", { ascending: true });
+    const requesterIds = [...new Set((reqs || []).map((r) => r.requested_by))];
+    const { data: profiles } = await supabase.from("profiles").select("*").in("id", requesterIds.length ? requesterIds : ["-"]);
+    setRequests(
+      (reqs || []).map((r: any) => ({ ...r, requester: (profiles as Profile[] || []).find((p) => p.id === r.requested_by) }))
+    );
+
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupId]);
+
+  async function postRequest() {
+    if (!form.destination.trim() || !form.when || !userId) return;
+    setSubmitting(true);
+    const { error } = await supabase.from("vuma_private_trip_requests").insert({
+      group_id: groupId,
+      requested_by: userId,
+      destination_address: form.destination.trim(),
+      needed_at: new Date(form.when).toISOString(),
+      seats_needed: form.seats,
+      note: form.note.trim() || null,
+      status: "open",
+    });
+    setSubmitting(false);
+    if (error) {
+      await modal.alert(`Could not post request: ${error.message}`);
+      return;
+    }
+    setForm({ destination: "", when: "", seats: 1, note: "" });
+    setShowForm(false);
+    await load();
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-navy-300">
+        <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading&hellip;
+      </div>
+    );
+  }
+
+  const statusColor: Record<string, string> = {
+    open: "bg-jade-50 border-jade-200 text-jade-700",
+    locked: "bg-gold-50 border-gold-200 text-gold-700",
+    completed: "bg-navy-50 border-navy-100 text-navy-500",
+    cancelled: "bg-coral-50 border-coral-200 text-coral-600",
+  };
+
+  return (
+    <div className="min-h-screen bg-paper">
+      <header className="px-5 py-4 border-b border-navy-100 flex items-center gap-3">
+        <Link href="/vuma-private" className="text-navy-400">
+          <ArrowLeft className="w-5 h-5" />
+        </Link>
+        <div>
+          <p className="font-bold text-navy-800">{group?.name}</p>
+          <p className="text-xs text-navy-400">Invite code: {group?.invite_code}</p>
+        </div>
+      </header>
+
+      <div className="max-w-2xl mx-auto px-5 py-6 space-y-5">
+        <button className="btn-primary w-full" onClick={() => setShowForm((s) => !s)}>
+          <Plus className="w-4 h-4" /> {showForm ? "Cancel" : "Need Help With A Trip?"}
+        </button>
+
+        {showForm && (
+          <div className="card p-5 space-y-3">
+            <p className="text-xs text-navy-400 -mt-1">
+              Ask your group if anyone is driving and has space. You'll only split the actual fuel/toll costs.
+              No fares, no profit.
+            </p>
+            <div>
+              <label className="label block mb-1">Where to</label>
+              <input className="input" placeholder="Destination" value={form.destination} onChange={(e) => setForm((f) => ({ ...f, destination: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label block mb-1">When</label>
+                <input type="datetime-local" className="input" value={form.when} onChange={(e) => setForm((f) => ({ ...f, when: e.target.value }))} />
+              </div>
+              <div>
+                <label className="label block mb-1">Seats needed</label>
+                <input type="number" min={1} className="input" value={form.seats} onChange={(e) => setForm((f) => ({ ...f, seats: Number(e.target.value) }))} />
+              </div>
+            </div>
+            <div>
+              <label className="label block mb-1">Note to group</label>
+              <input className="input" placeholder="e.g. Going for church, can help with fuel" value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} />
+            </div>
+            <button className="btn-primary w-full" disabled={submitting || !form.destination.trim() || !form.when} onClick={postRequest}>
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Ask My Group"}
+            </button>
+            <div className="bg-navy-50 rounded-lg p-3 text-xs text-navy-500 space-y-1">
+              <p className="font-semibold text-navy-600">Group Rules:</p>
+              <p>1. This is for members of your private group only.</p>
+              <p>2. Drivers volunteer their own car and trip. No one can be "hired."</p>
+              <p>3. Only actual costs are shared: fuel, tolls, parking.</p>
+              <p>4. The driver is responsible for a valid licence and insurance.</p>
+            </div>
+          </div>
+        )}
+
+        <div>
+          <p className="label mb-3">Trip requests</p>
+          {!requests.length && <p className="text-navy-400 text-sm">No trip requests yet.</p>}
+          <div className="space-y-2">
+            {requests.map((r) => (
+              <Link key={r.id} href={`/vuma-private/trip-requests/${r.id}`} className={`card p-4 block border ${statusColor[r.status]}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="font-semibold text-sm flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5" /> {r.destination_address}
+                  </p>
+                  <span className="text-[10px] font-bold uppercase tracking-wide">{r.status}</span>
+                </div>
+                <p className="text-xs flex items-center gap-3 opacity-80">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-3 h-3" /> {format(new Date(r.needed_at), "d MMM, HH:mm")}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Users2 className="w-3 h-3" /> {r.seats_needed} seat{r.seats_needed > 1 ? "s" : ""}
+                  </span>
+                </p>
+                <p className="text-xs opacity-70 mt-1">{r.requester?.full_name || "Member"}{r.note ? ` — ${r.note}` : ""}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

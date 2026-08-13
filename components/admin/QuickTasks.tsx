@@ -59,7 +59,7 @@ export function QuickTasks({
     { label: "Subscription payment to approve", count: pendingSubs, href: "/admin/subscriptions" },
     { label: "Wallet top-up to approve", count: pendingTopups, href: "/admin/wallet-topups" },
     { label: "Rider wallet top-up to approve", count: pendingRiderTopups, href: "/admin/rider-wallet-topups" },
-    { label: "Vuma Associates membership awaiting confirmation", count: pendingMemberships, href: "/admin/vuma-associates" },
+    { label: "Vuma Private membership awaiting confirmation", count: pendingMemberships, href: "/admin/vuma-associates" },
     { label: "Suspension appeal to review", count: pendingAppeals, href: "/admin/appeals" },
     { label: "Duplicate vehicle plate flagged", count: duplicateFlags, href: "/admin/referrals" },
   ];

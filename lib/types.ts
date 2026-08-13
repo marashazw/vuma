@@ -361,6 +361,55 @@ export interface DriverWalletTransaction {
   created_at: string;
 }
 
+export interface VumaPrivateGroup {
+  id: string;
+  name: string;
+  description: string | null;
+  invite_code: string;
+  created_by: string;
+  created_at: string;
+}
+
+export interface VumaPrivateGroupMember {
+  id: string;
+  group_id: string;
+  profile_id: string;
+  joined_at: string;
+}
+
+export interface VumaPrivateTripRequest {
+  id: string;
+  group_id: string;
+  requested_by: string;
+  destination_address: string;
+  destination_lat: number | null;
+  destination_lng: number | null;
+  needed_at: string;
+  seats_needed: number;
+  note: string | null;
+  status: "open" | "locked" | "cancelled" | "completed";
+  accepted_offer_id: string | null;
+  created_at: string;
+}
+
+export interface VumaPrivateTripOffer {
+  id: string;
+  trip_request_id: string;
+  driver_id: string;
+  seats_available: number;
+  estimated_total_cost: number;
+  cost_per_person: number;
+  note: string | null;
+  status: "offered" | "accepted" | "declined" | "withdrawn";
+  created_at: string;
+}
+
+export interface VumaPrivateFeeSettings {
+  fee_type: "monthly" | "per_trip" | "none";
+  fee_amount: number;
+  currency: string;
+}
+
 export interface VumaAssociateMembership {
   id: string;
   profile_id: string;

@@ -311,7 +311,7 @@ function DriverSubscriptionInner() {
                 <Gift className="w-4 h-4" /> Subscription holiday — {offer.duration_days} days free on {offer.plan?.name}
               </p>
               <p className="text-xs text-navy-500 mt-1 mb-3">
-                A Vuma Associates member benefit. Claimable until {format(new Date(offer.claim_window_ends_at), "d MMM yyyy, HH:mm")}.
+                A Vuma Private member benefit. Claimable until {format(new Date(offer.claim_window_ends_at), "d MMM yyyy, HH:mm")}.
               </p>
               <button className="btn-primary w-full !text-sm" disabled={claimingId === offer.id} onClick={() => claimHoliday(offer.id)}>
                 {claimingId === offer.id ? <Loader2 className="w-4 h-4 animate-spin" /> : "Claim free period"}
@@ -328,12 +328,12 @@ function DriverSubscriptionInner() {
           </p>
           <p className="text-xs text-navy-500 mt-1 mb-3">
             {membershipStatus === "pending"
-              ? "This is a Vuma Associates member benefit — yours is awaiting confirmation, and you'll be able to claim it once active."
-              : "This is a Vuma Associates member benefit. Join to claim a free subscription period."}
+              ? "This is a Vuma Private member benefit — yours is awaiting confirmation, and you'll be able to claim it once active."
+              : "This is a Vuma Private member benefit. Join to claim a free subscription period."}
           </p>
           {!membershipStatus && (
             <a href="/vuma-associates/constitution" className="btn-primary w-full !text-sm text-center block">
-              Learn about Vuma Associates
+              Learn about Vuma Private
             </a>
           )}
         </div>
@@ -346,7 +346,7 @@ function DriverSubscriptionInner() {
       {!holidayOffers.length && membershipStatus !== "active" && (
         <div className="card p-5 bg-navy-50">
           <p className="text-sm font-semibold text-navy-700 flex items-center gap-1.5">
-            <Gift className="w-4 h-4" /> Vuma Associates members get occasional free subscription periods
+            <Gift className="w-4 h-4" /> Vuma Private members get occasional free subscription periods
           </p>
           <p className="text-xs text-navy-500 mt-1 mb-3">
             {membershipStatus === "pending"
@@ -355,7 +355,7 @@ function DriverSubscriptionInner() {
           </p>
           {!membershipStatus && (
             <a href="/vuma-associates/constitution" className="btn-ghost w-full !text-sm text-center block">
-              Learn about Vuma Associates
+              Learn about Vuma Private
             </a>
           )}
         </div>

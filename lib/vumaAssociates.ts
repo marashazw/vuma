@@ -40,7 +40,7 @@ export async function checkRideAccessRestriction(
     restricted: true,
     reason:
       applicable.scope === "deluxe_only"
-        ? "Vuma Deluxe is reserved for active Vuma Associates members right now."
-        : "Rides are reserved for active Vuma Associates members right now.",
+        ? "Vuma Deluxe is reserved for active Vuma Private members right now."
+        : "Rides are reserved for active Vuma Private members right now.",
   };
 }

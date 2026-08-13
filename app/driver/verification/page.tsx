@@ -349,16 +349,16 @@ export default function DriverVerificationPage() {
 
       {profile.verification_status !== "verified" && requireMembership && !membershipSatisfied && (
         <div className="card p-4 bg-gold-50 border-gold-200">
-          <p className="text-sm font-semibold text-gold-700">Vuma Associates membership required</p>
+          <p className="text-sm font-semibold text-gold-700">Vuma Private membership required</p>
           <p className="text-xs text-navy-500 mt-1 mb-3">
-            Driver registration currently requires an active Vuma Associates membership.{" "}
+            Driver registration currently requires an active Vuma Private membership.{" "}
             {membershipStatus === "pending"
               ? "Yours is awaiting confirmation — you'll be able to submit once it's active."
               : "Join to continue with your driver verification."}
           </p>
           {!membershipStatus && (
             <a href="/vuma-associates/constitution" className="btn-primary w-full !text-sm text-center block">
-              Learn about Vuma Associates
+              Learn about Vuma Private
             </a>
           )}
         </div>
@@ -394,7 +394,7 @@ export default function DriverVerificationPage() {
           {!allUploaded || !vehicleComplete
             ? "Complete your vehicle details and upload all four documents to submit for review."
             : !membershipSatisfied
-            ? "An active Vuma Associates membership is required before you can submit."
+            ? "An active Vuma Private membership is required before you can submit."
             : "Accept the declaration above to submit for review."}
         </p>
       )}

@@ -404,14 +404,14 @@ export default function AdminSubscriptionsPage() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <p className="label flex items-center gap-1.5">
-            <Gift className="w-3.5 h-3.5" /> Subscription holidays (Vuma Associates benefit)
+            <Gift className="w-3.5 h-3.5" /> Subscription holidays (Vuma Private benefit)
           </p>
           <button className="btn-ghost !py-1.5 !px-2.5 !text-xs" onClick={() => setShowHolidayForm((s) => !s)}>
             {showHolidayForm ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
           </button>
         </div>
         <p className="text-xs text-navy-400 -mt-2 mb-3">
-          A free period on a chosen plan, claimable only by active Vuma Associates members during the window below.
+          A free period on a chosen plan, claimable only by active Vuma Private members during the window below.
         </p>
 
         {showHolidayForm && (
