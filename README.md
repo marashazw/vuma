@@ -1432,6 +1432,25 @@ simplified and should be hardened before handling real money and real users at s
   still shows the full set in one row, since the cramped-small-screen problem this addresses
   doesn't apply there at all. The open-requests count badge moved along with "Requests" to the
   new top row rather than being lost in the split.
+- **Vuma Private trip requests now auto-expire from the platform-wide feed** — 24 hours after
+  the request's own scheduled `needed_at` has passed, not 24 hours after posting, so a request
+  made today for a future date stays visible right up until that actual time, exactly matching
+  "unless the request is for a date and time ahead." A new sweep
+  (`sweep-expired-requests`), same opportunistic pattern as the other sweeps in this app,
+  actually transitions the request's status to `cancelled` rather than just filtering the
+  display — keeps admin views and anywhere else relying on `status = 'open'` consistent too,
+  not just the feed itself. **Found the same class of gap the driver/rider sweeps already had
+  fixed once before**: `/vuma-private/*` are standalone top-level routes with no shared layout
+  at all, so mounting the sweep trigger only at the rider/driver layout level (where it already
+  lives) would silently never fire for someone navigating directly into Vuma Private without
+  having visited `/rider` or `/driver` first in that session. Fixed with a new, minimal
+  `app/vuma-private/layout.tsx` whose only job is mounting the same, already-proven
+  `RideSweepTrigger` — renders nothing else, so it doesn't change any existing page's
+  appearance or behavior at all. A group's own request list page was deliberately left
+  showing all statuses including cancelled/expired (with their existing status badge) rather
+  than hiding them outright — that page already functions more like a group's activity
+  history than a live feed, and members plausibly want to see "this one expired, nobody
+  offered" as context, not have it vanish silently.
 
 ## Publishing to Google Play Store
 

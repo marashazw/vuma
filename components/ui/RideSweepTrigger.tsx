@@ -14,6 +14,7 @@ export function RideSweepTrigger() {
   useEffect(() => {
     fetch("/api/rides/sweep-stale-negotiations", { method: "POST" }).catch(() => {});
     fetch("/api/rides/sweep-abandoned-scheduled", { method: "POST" }).catch(() => {});
+    fetch("/api/vuma-private/sweep-expired-requests", { method: "POST" }).catch(() => {});
   }, []);
   return null;
 }
