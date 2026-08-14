@@ -4,9 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useModal } from "@/components/ui/ModalProvider";
-import type { VumaPrivateGroup, VumaAssociateMembership } from "@/lib/types";
-import { Loader2, Users, Plus, LogIn, Copy, Check, ArrowRight, ShieldCheck, Globe2 } from "lucide-react";
+import type { VumaPrivateGroup, VumaAssociateMembership, VumaPrivateTripOffer, VumaPrivateTripRequest, Profile } from "@/lib/types";
+import { Loader2, Users, Plus, LogIn, Copy, Check, ArrowRight, ShieldCheck, Globe2, Bell, X } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
+
+const DISMISSED_OFFERS_KEY = "vuma-private-dismissed-offers";
+
+type PendingOfferAlert = VumaPrivateTripOffer & { requestDestination: string; driverName: string };
 
 export default function VumaPrivateHubPage() {
   const supabase = createClient();
@@ -22,6 +26,8 @@ export default function VumaPrivateHubPage() {
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [pendingOffers, setPendingOffers] = useState<PendingOfferAlert[]>([]);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
   async function load() {
     const {
@@ -47,6 +53,45 @@ export default function VumaPrivateHubPage() {
       setGroups((groupData as VumaPrivateGroup[]) || []);
     } else {
       setGroups([]);
+    }
+
+    // Pending offers on the user's own open trip requests — someone
+    // offering to help with a request they posted is plausibly the exact
+    // reason they came back to this page, not to create a new one.
+    const { data: myRequests } = await supabase
+      .from("vuma_private_trip_requests")
+      .select("id, destination_address")
+      .eq("requested_by", user.id)
+      .eq("status", "open");
+    const requestMap: Record<string, string> = {};
+    (myRequests || []).forEach((r) => (requestMap[r.id] = r.destination_address));
+    const requestIds = Object.keys(requestMap);
+
+    if (requestIds.length) {
+      const { data: offers } = await supabase
+        .from("vuma_private_trip_offers")
+        .select("*")
+        .in("trip_request_id", requestIds)
+        .eq("status", "offered")
+        .order("created_at", { ascending: false });
+      const driverIds = [...new Set((offers || []).map((o) => o.driver_id))];
+      const { data: drivers } = await supabase.from("profiles").select("id, full_name").in("id", driverIds.length ? driverIds : ["-"]);
+      setPendingOffers(
+        (offers || []).map((o: any) => ({
+          ...o,
+          requestDestination: requestMap[o.trip_request_id] || "your trip",
+          driverName: (drivers || []).find((d) => d.id === o.driver_id)?.full_name || "A member",
+        }))
+      );
+    } else {
+      setPendingOffers([]);
+    }
+
+    try {
+      const raw = localStorage.getItem(DISMISSED_OFFERS_KEY);
+      setDismissedIds(new Set(raw ? JSON.parse(raw) : []));
+    } catch {
+      setDismissedIds(new Set());
     }
 
     setLoading(false);
@@ -115,6 +160,19 @@ export default function VumaPrivateHubPage() {
     await supabase.from("vuma_associates_memberships").update({ auto_accept_cooption: newValue }).eq("id", membership.id);
     setMembership({ ...membership, auto_accept_cooption: newValue });
   }
+
+  function dismissOffer(offerId: string) {
+    const next = new Set(dismissedIds);
+    next.add(offerId);
+    setDismissedIds(next);
+    try {
+      localStorage.setItem(DISMISSED_OFFERS_KEY, JSON.stringify([...next]));
+    } catch {
+      // Best-effort only — worst case the banner reappears next visit.
+    }
+  }
+
+  const visibleOffers = pendingOffers.filter((o) => !dismissedIds.has(o.id));
 
   if (loading) {
     return (
@@ -193,6 +251,33 @@ export default function VumaPrivateHubPage() {
       </div>
 
       <div className="max-w-2xl mx-auto px-5 py-8 space-y-6">
+        {visibleOffers.length > 0 && (
+          <div className="space-y-2">
+            {visibleOffers.map((o) => (
+              <div key={o.id} className="card p-4 bg-gold-50 border-gold-300 flex items-start gap-3">
+                <Bell className="w-4 h-4 text-gold-600 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gold-700">
+                    {o.driverName} offered you a ride for {o.requestDestination}
+                  </p>
+                  <p className="text-xs text-navy-500 mt-0.5">
+                    {o.seats_available} seat{o.seats_available > 1 ? "s" : ""} · ${o.cost_per_person.toFixed(2)} each
+                  </p>
+                  <Link
+                    href={`/vuma-private/trip-requests/${o.trip_request_id}`}
+                    className="text-xs font-semibold text-gold-700 underline mt-1.5 inline-block"
+                  >
+                    Review offer
+                  </Link>
+                </div>
+                <button onClick={() => dismissOffer(o.id)} className="text-navy-400 hover:text-navy-600 shrink-0" aria-label="Dismiss">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <ShieldCheck className="w-6 h-6 text-jade-500" /> Vuma Private
