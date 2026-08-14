@@ -7,7 +7,7 @@ import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/client";
 import { useModal } from "@/components/ui/ModalProvider";
 import type { VumaPrivateTripRequest, VumaPrivateTripOffer, Profile } from "@/lib/types";
-import { Loader2, ArrowLeft, MapPin, Users2, Calendar, Check, AlertTriangle, Sparkles } from "lucide-react";
+import { Loader2, ArrowLeft, ArrowRight, MapPin, Users2, Calendar, Check, AlertTriangle, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 
 const RideMap = dynamic(() => import("@/components/map/RideMap"), { ssr: false });
@@ -265,6 +265,15 @@ export default function TripRequestDetailPage({ params }: { params: Promise<{ id
             employing a driver — a driver who offers is sharing the cost of a trip they were already
             planning to make.
           </p>
+        </div>
+
+        <div className="flex items-center justify-center gap-4 pt-2 pb-4">
+          <Link href="/vuma-private/request" className="text-xs font-semibold text-jade-600 flex items-center gap-1">
+            Request another trip <ArrowRight className="w-3 h-3" />
+          </Link>
+          <Link href="/rider" className="text-xs font-semibold" style={{ color: "#D97757" }}>
+            Vuma regular
+          </Link>
         </div>
       </div>
     </div>
