@@ -97,11 +97,20 @@ export default function RiderHomePage() {
         setLocating(true);
         setLocationError(false);
         navigator.geolocation.getCurrentPosition(
-          async (pos) => {
+          (pos) => {
             const { latitude, longitude } = pos.coords;
-            const label = (await reverseGeocode(latitude, longitude)) || "Current location";
-            setPickup({ label, lat: latitude, lng: longitude });
+            // Set immediately with the raw coordinates — this is a pure
+            // device GPS reading, no network involved at all, so there's
+            // no reason to make the map/marker wait on anything. The
+            // address label upgrades in the background once (and if)
+            // reverse geocoding succeeds.
+            setPickup({ label: "Current location", lat: latitude, lng: longitude });
             setLocating(false);
+            reverseGeocode(latitude, longitude)
+              .then((label) => {
+                if (label) setPickup((prev) => (prev && prev.lat === latitude && prev.lng === longitude ? { ...prev, label } : prev));
+              })
+              .catch(() => {});
           },
           () => {
             setLocating(false);

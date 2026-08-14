@@ -110,20 +110,31 @@ export async function geocodeSearch(
 ): Promise<GeocodeResult[]> {
   if (!query || query.trim().length < 3) return [];
   const biasParam = bias ? `&biasLat=${bias.lat}&biasLng=${bias.lng}` : "";
-  const res = await fetch(
-    `/api/geocode?q=${encodeURIComponent(query)}&countrycodes=${countryCodes}${biasParam}`
-  );
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data.results || [];
+  try {
+    const res = await fetch(
+      `/api/geocode?q=${encodeURIComponent(query)}&countrycodes=${countryCodes}${biasParam}`
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.results || [];
+  } catch {
+    return [];
+  }
 }
 
 export async function reverseGeocode(
   lat: number,
   lng: number
 ): Promise<string | null> {
-  const res = await fetch(`/api/geocode?reverse=1&lat=${lat}&lng=${lng}`);
-  if (!res.ok) return null;
-  const data = await res.json();
-  return data.label || null;
+  try {
+    const res = await fetch(`/api/geocode?reverse=1&lat=${lat}&lng=${lng}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.label || null;
+  } catch {
+    // Genuinely offline (fetch itself throws, distinct from a bad HTTP
+    // response) — fail quietly rather than propagating as an unhandled
+    // rejection to whatever called this.
+    return null;
+  }
 }

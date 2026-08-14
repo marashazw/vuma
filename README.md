@@ -1378,6 +1378,30 @@ simplified and should be hardened before handling real money and real users at s
     naturally scopes the count to whatever that specific driver can actually see, so a
     non-member correctly sees nothing added to the link at all, rather than a discouraging
     "(0) open requests."
+- **Fixed a real bug where the rider request page showed nothing meaningful while
+  offline or on a slow connection, despite the device's own GPS being available
+  instantly.** The pickup-detection code awaited a network-dependent reverse-geocode call
+  *before* ever setting the pickup point at all — meaning the map stayed on its generic
+  country-center fallback, and the "locating..." banner stayed up, for as long as that
+  network call took, even though the raw coordinates were available the instant the device's
+  GPS resolved, with zero network involved. Fixed by setting the pickup point immediately
+  with a generic "Current location" label the moment GPS resolves, then upgrading that label
+  to a real address in the background once (and if) reverse geocoding succeeds — the map and
+  marker now render at the right place immediately regardless of connectivity, with only the
+  human-readable label arriving slightly later, or staying generic if genuinely offline,
+  rather than the whole thing blocking on it. Existing connectivity warning banner is
+  untouched and still shows alongside this, exactly as before. **A related root-cause gap
+  found while fixing this**: neither `reverseGeocode` nor `geocodeSearch` in `lib/geo.ts` had
+  a try/catch around their own `fetch()` calls — only handled a bad HTTP response, not a
+  genuine network failure (which throws, rather than returning a bad response). Fixed both to
+  resolve gracefully (`null` / `[]`) on any failure, so nowhere else in the app that calls
+  these functions can be surprised by an unhandled rejection when offline, not just this one
+  call site. Deliberately left the service worker's pre-cache list unchanged — the tempting
+  next step (proactively pre-caching `/rider` and `/driver` on install) would risk caching an
+  unauthenticated redirect response instead of the real dashboard, since those routes require
+  login and SW install can happen before a user has ever signed in; the existing
+  cache-as-actually-visited strategy is safer specifically because it only ever caches what a
+  correctly-authenticated user genuinely saw.
 
 ## Publishing to Google Play Store
 
