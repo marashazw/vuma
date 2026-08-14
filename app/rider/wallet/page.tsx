@@ -8,6 +8,7 @@ import { useModal } from "@/components/ui/ModalProvider";
 import { currencyFormat } from "@/lib/commission";
 import type { WalletTransaction, RiderWalletTopup, VumaAssociateMembership, VumaPrivateFeeSettings } from "@/lib/types";
 import { Loader2, Wallet, ArrowUpRight, ArrowDownLeft, Upload, Paperclip, X, Clock, CheckCircle2, Users, RefreshCw } from "lucide-react";
+import { PaymentOptionsAccordion } from "@/components/wallet/PaymentOptionsAccordion";
 import { format } from "date-fns";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -28,6 +29,7 @@ export default function WalletPage() {
   const [feeSettings, setFeeSettings] = useState<VumaPrivateFeeSettings | null>(null);
   const [renewing, setRenewing] = useState(false);
   const [currency, setCurrency] = useState("ZAR");
+  const [country, setCountry] = useState("ZA");
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [membership, setMembership] = useState<VumaAssociateMembership | null>(null);
   const [pendingTopups, setPendingTopups] = useState<RiderWalletTopup[]>([]);
@@ -59,6 +61,7 @@ export default function WalletPage() {
       .single();
     setBalance(Number(profile?.wallet_balance) || 0);
     setCurrency(profile?.wallet_currency || (profile?.country === "ZW" ? "USD" : "ZAR"));
+    setCountry(profile?.country || "ZA");
 
     const { data: txns } = await supabase
       .from("wallet_transactions")
@@ -225,6 +228,8 @@ export default function WalletPage() {
         </p>
         <p className="fare-figure text-3xl font-bold text-gold-400">{currencyFormat(balance, currency)}</p>
       </div>
+
+      <PaymentOptionsAccordion country={country} walletLabel="rider wallet" />
 
       {feeSettings?.fee_type === "monthly" && isActiveMember && (
         <div

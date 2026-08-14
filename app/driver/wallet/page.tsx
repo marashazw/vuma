@@ -9,6 +9,7 @@ import { COUNTRIES } from "@/lib/constants";
 import { checkLowBalance, type LowBalanceCheck } from "@/lib/wallet";
 import type { DriverWalletTopup, DriverWalletTransaction, CountryCode } from "@/lib/types";
 import { Loader2, Wallet, Upload, Paperclip, X, ArrowUpRight, ArrowDownRight, Clock, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { PaymentOptionsAccordion } from "@/components/wallet/PaymentOptionsAccordion";
 import { format } from "date-fns";
 
 export default function DriverWalletPage() {
@@ -204,6 +205,8 @@ export default function DriverWalletPage() {
           online — unless you're on an active subscription plan.
         </p>
       </div>
+
+      <PaymentOptionsAccordion country={country} walletLabel="driver wallet" />
 
       {lowBalance?.isLow && (
         <div className="card p-4 flex items-start gap-2.5 bg-gold-50 border-gold-200">

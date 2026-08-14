@@ -7,6 +7,7 @@ import { useModal } from "@/components/ui/ModalProvider";
 import { currencyFormat } from "@/lib/commission";
 import type { RiderWalletTopup, VumaAssociateMembership, VumaPrivateFeeSettings } from "@/lib/types";
 import { Loader2, ArrowLeft, Wallet, Upload, Paperclip, X, Clock, Users, RefreshCw } from "lucide-react";
+import { PaymentOptionsAccordion } from "@/components/wallet/PaymentOptionsAccordion";
 import { format } from "date-fns";
 
 // A role-agnostic wallet page specifically for Vuma Private — the main
@@ -24,6 +25,7 @@ export default function VumaPrivateWalletPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [balance, setBalance] = useState(0);
   const [currency, setCurrency] = useState("USD");
+  const [country, setCountry] = useState("ZA");
   const [membership, setMembership] = useState<VumaAssociateMembership | null>(null);
   const [feeSettings, setFeeSettings] = useState<VumaPrivateFeeSettings | null>(null);
   const [pendingTopups, setPendingTopups] = useState<RiderWalletTopup[]>([]);
@@ -48,6 +50,7 @@ export default function VumaPrivateWalletPage() {
     const { data: profile } = await supabase.from("profiles").select("wallet_balance, wallet_currency, country").eq("id", user.id).single();
     setBalance(Number(profile?.wallet_balance) || 0);
     setCurrency(profile?.wallet_currency || (profile?.country === "ZW" ? "USD" : "ZAR"));
+    setCountry(profile?.country || "ZA");
 
     const { data: mem } = await supabase.from("vuma_associates_memberships").select("*").eq("profile_id", user.id).maybeSingle();
     setMembership(mem as VumaAssociateMembership | null);
@@ -161,6 +164,8 @@ export default function VumaPrivateWalletPage() {
           </p>
           <p className="fare-figure text-3xl font-bold text-gold-400">{currencyFormat(balance, currency)}</p>
         </div>
+
+        <PaymentOptionsAccordion country={country} walletLabel="Vuma Private wallet" />
 
         {feeSettings?.fee_type === "monthly" && isActiveMember && (
           <div className={`card p-5 ${paidUp ? "bg-jade-50 border-jade-200" : "bg-gold-50 border-gold-200"}`}>

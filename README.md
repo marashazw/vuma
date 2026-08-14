@@ -1481,6 +1481,23 @@ simplified and should be hardened before handling real money and real users at s
   one as a filtered list linking to each driver individually rather than adding bulk actions —
   a duplicate-plate flag genuinely needs individual investigation (comparing plate numbers
   across drivers), not something safely resolved in bulk.
+- **"Payment options" disclosure widget added to all three wallet pages** (rider, driver,
+  Vuma Private) — shows how to actually top up, based on the person's country. **Caught a
+  real conflict before it shipped**: my first pass built a brand-new `payment_instructions`
+  table and admin route, only to discover — via a "file already exists" error — that a table
+  with that exact name already existed, built in an earlier session for driver subscription
+  payments (migrations 008/016/017), with a genuinely different schema (one row per country,
+  not multiple methods per country). Removed my conflicting migration entirely rather than
+  risk two incompatible definitions of the same table name. Reused that existing data instead
+  of duplicating it: the actual payment method (a bank account, an EcoCash number) is the same
+  business detail regardless of whether someone's topping up a wallet or paying a
+  subscription, so a second, parallel admin-managed copy would only risk drifting out of sync
+  with the first over time. The new `PaymentOptionsAccordion` component wraps that same,
+  already-admin-configurable content in a collapsible disclosure widget, with wording
+  contextualized per wallet ("how to top up your rider wallet" vs "driver wallet" vs "Vuma
+  Private wallet") even though the underlying payment details are identical. No new admin UI
+  needed — Admin → Subscriptions already manages this content, and now it powers wallet
+  top-ups too.
 
 ## Publishing to Google Play Store
 
