@@ -177,15 +177,20 @@ export default function VumaPrivateHubPage() {
     <div className="min-h-screen bg-paper">
       <header className="px-5 py-4 border-b border-navy-100 flex items-center justify-between">
         <Logo />
-        <div className="flex items-center gap-4">
-          <Link href="/vuma-private/wallet" className="text-xs text-navy-400 hover:text-navy-600 flex items-center gap-1">
-            Wallet
-          </Link>
-          <Link href="/rider" className="text-xs text-navy-400 hover:text-navy-600 flex items-center gap-1">
-            Switch to regular Vuma <ArrowRight className="w-3 h-3" />
-          </Link>
-        </div>
+        <Link href="/vuma-private/wallet" className="text-xs text-navy-400 hover:text-navy-600 flex items-center gap-1">
+          Wallet
+        </Link>
       </header>
+
+      <div className="px-5 pt-4 flex justify-center">
+        <Link
+          href="/rider"
+          className="inline-flex items-center gap-1.5 text-sm font-bold px-4 py-2 rounded-full"
+          style={{ color: "#D97757", border: "1.5px solid #D97757" }}
+        >
+          Switch to regular Vuma <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+      </div>
 
       <div className="max-w-2xl mx-auto px-5 py-8 space-y-6">
         <div>
