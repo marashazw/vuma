@@ -62,7 +62,7 @@ export function ConnectivityBanner() {
     >
       {state === "offline" ? <WifiOff className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
       <div>
-        <p>{state === "offline" ? "No internet connection" : "Signal's a bit patchy"}</p>
+        <p>{state === "offline" ? "Uh oh, offline?" : "Signal's a bit patchy"}</p>
         <p className="text-xs font-normal text-white/80">
           {state === "offline"
             ? "Showing your last known location — reconnect to search or request a ride."
