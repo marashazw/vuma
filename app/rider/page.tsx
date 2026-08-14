@@ -395,7 +395,7 @@ export default function RiderHomePage() {
       <div
         className="fixed inset-0 pointer-events-none z-40"
         style={{
-          boxShadow: "inset 0 0 0 3px #D97757, inset 0 0 28px 6px rgba(217, 119, 87, 0.4)",
+          boxShadow: "inset 0 0 0 3px #C0C4CC, inset 0 0 28px 6px rgba(192, 196, 204, 0.4)",
         }}
       />
 
