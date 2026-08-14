@@ -5,7 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useModal } from "@/components/ui/ModalProvider";
 import type { VumaPrivateGroup, VumaAssociateMembership, VumaPrivateTripOffer, VumaPrivateTripRequest, Profile } from "@/lib/types";
-import { Loader2, Users, Plus, LogIn, Copy, Check, ArrowRight, ShieldCheck, Globe2, Bell, X } from "lucide-react";
+import { Loader2, Users, Plus, LogIn, Copy, Check, ArrowRight, ShieldCheck, Globe2, Bell, X, ChevronDown } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 
 const DISMISSED_OFFERS_KEY = "vuma-private-dismissed-offers";
@@ -28,6 +28,7 @@ export default function VumaPrivateHubPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [pendingOffers, setPendingOffers] = useState<PendingOfferAlert[]>([]);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [groupsOpen, setGroupsOpen] = useState(true);
 
   async function load() {
     const {
@@ -335,27 +336,38 @@ export default function VumaPrivateHubPage() {
           </div>
         )}
 
-        <div>
-          <p className="label mb-3">Your groups</p>
-          {!groups.length && <p className="text-navy-400 text-sm">You haven't joined or created a group yet.</p>}
-          <div className="space-y-2">
-            {groups.map((g) => (
-              <div key={g.id} className="card p-4">
-                <Link href={`/vuma-private/groups/${g.id}`} className="block mb-2">
-                  <p className="font-semibold text-navy-800">{g.name}</p>
-                  {g.description && <p className="text-xs text-navy-400 mt-0.5">{g.description}</p>}
-                </Link>
-                <div className="flex items-center justify-between">
-                  <Link href={`/vuma-private/groups/${g.id}`} className="text-xs font-semibold text-jade-600 flex items-center gap-1">
-                    Open group <ArrowRight className="w-3 h-3" />
-                  </Link>
-                  <button className="text-xs text-navy-400 flex items-center gap-1" onClick={() => copyCode(g)}>
-                    {copiedId === g.id ? <Check className="w-3 h-3 text-jade-600" /> : <Copy className="w-3 h-3" />} {g.invite_code}
-                  </button>
-                </div>
+        <div className="card overflow-hidden">
+          <button
+            type="button"
+            className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left"
+            onClick={() => setGroupsOpen((o) => !o)}
+          >
+            <span className="text-sm font-semibold text-navy-700">Your groups ({groups.length})</span>
+            <ChevronDown className={`w-4 h-4 text-navy-400 shrink-0 transition-transform ${groupsOpen ? "rotate-180" : ""}`} />
+          </button>
+          {groupsOpen && (
+            <div className="px-4 pb-4 pt-1 border-t border-navy-100">
+              {!groups.length && <p className="text-navy-400 text-sm">You haven't joined or created a group yet.</p>}
+              <div className="space-y-2">
+                {groups.map((g) => (
+                  <div key={g.id} className="card p-4">
+                    <Link href={`/vuma-private/groups/${g.id}`} className="block mb-2">
+                      <p className="font-semibold text-navy-800">{g.name}</p>
+                      {g.description && <p className="text-xs text-navy-400 mt-0.5">{g.description}</p>}
+                    </Link>
+                    <div className="flex items-center justify-between">
+                      <Link href={`/vuma-private/groups/${g.id}`} className="text-xs font-semibold text-jade-600 flex items-center gap-1">
+                        Open group <ArrowRight className="w-3 h-3" />
+                      </Link>
+                      <button className="text-xs text-navy-400 flex items-center gap-1" onClick={() => copyCode(g)}>
+                        {copiedId === g.id ? <Check className="w-3 h-3 text-jade-600" /> : <Copy className="w-3 h-3" />} {g.invite_code}
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
