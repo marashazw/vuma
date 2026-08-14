@@ -1423,6 +1423,15 @@ simplified and should be hardened before handling real money and real users at s
   currently sitting on the fallback (`locationError`), not on every reconnection regardless of
   state, since there's no reason to re-trigger anything once geolocation has already succeeded
   normally.
+- **Split the driver mobile nav into two rows — too many items crammed into one bottom bar on
+  small screens.** Previously all 7 items (Requests, Forum, Earnings, Wallet, Plan, Verify,
+  Invite) squeezed into a single fixed bottom row, leaving each one cramped. The three most
+  frequently used — Requests, Forum, Wallet — now live in a new, compact quick-access row near
+  the top (`DriverTopQuickNav`, mobile-only), with the remaining four staying in the existing
+  bottom nav, now with noticeably more room each. Desktop is untouched — `DriverDesktopTabs`
+  still shows the full set in one row, since the cramped-small-screen problem this addresses
+  doesn't apply there at all. The open-requests count badge moved along with "Requests" to the
+  new top row rather than being lost in the split.
 
 ## Publishing to Google Play Store
 
