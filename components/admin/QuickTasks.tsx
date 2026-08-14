@@ -47,13 +47,13 @@ export function QuickTasks({
     {
       label: "Driver verification to review",
       count: pendingVerifications.length,
-      href: "/admin/drivers",
+      href: "/admin/drivers?filter=pending_verification",
       items: pendingVerifications.slice(0, 3).map((p) => ({ id: p.user_id, name: personName(p) })),
     },
     {
       label: "Vuma Deluxe application to review",
       count: pendingDeluxe.length,
-      href: "/admin/drivers",
+      href: "/admin/drivers?filter=pending_deluxe",
       items: pendingDeluxe.slice(0, 3).map((p) => ({ id: p.user_id, name: personName(p) })),
     },
     { label: "Subscription payment to approve", count: pendingSubs, href: "/admin/subscriptions" },
@@ -61,7 +61,7 @@ export function QuickTasks({
     { label: "Rider wallet top-up to approve", count: pendingRiderTopups, href: "/admin/rider-wallet-topups" },
     { label: "Vuma Private membership awaiting confirmation", count: pendingMemberships, href: "/admin/vuma-associates" },
     { label: "Suspension appeal to review", count: pendingAppeals, href: "/admin/appeals" },
-    { label: "Duplicate vehicle plate flagged", count: duplicateFlags, href: "/admin/referrals" },
+    { label: "Duplicate vehicle plate flagged", count: duplicateFlags, href: "/admin/fraud" },
   ];
 
   const withAction = groups.filter((g) => g.count > 0);

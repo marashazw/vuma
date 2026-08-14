@@ -1,26 +1,46 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { StatusPill } from "@/components/ui/StatusPill";
+import { BulkActionBar } from "@/components/ui/BulkActionBar";
 import type { DriverProfile, Profile } from "@/lib/types";
-import { Loader2, Users, ArrowUpDown } from "lucide-react";
+import { Loader2, Users, ArrowUpDown, X } from "lucide-react";
 
 type Row = DriverProfile & { profile: Profile };
 type SortKey = "name" | "verification" | "rating_desc" | "rating_asc" | "commission_mode" | "subscription_plan" | "vuma_private" | "deluxe" | "online";
+type FilterKey = "pending_verification" | "pending_deluxe" | null;
 
 const MEMBERSHIP_RANK: Record<string, number> = { active: 0, pending: 1, lapsed: 2, revoked: 3, none: 4 };
 const DELUXE_RANK: Record<string, number> = { certified: 0, pending: 1, expired: 2, none: 3 };
 
 export default function AdminDriversPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-24 text-navy-300"><Loader2 className="w-5 h-5 animate-spin" /></div>}>
+      <AdminDriversPageContent />
+    </Suspense>
+  );
+}
+
+function AdminDriversPageContent() {
   const supabase = createClient();
+  const searchParams = useSearchParams();
+  // Matches exactly what the admin dashboard's Quick Tasks counted, so
+  // the number someone clicked "Review" on is exactly what shows here —
+  // verification_status defaults to 'pending' for every brand-new
+  // signup too, so submitted_at is what actually distinguishes a real,
+  // reviewable application from someone who just hasn't started yet.
+  const filter = (searchParams.get("filter") as FilterKey) || null;
   const [rows, setRows] = useState<Row[]>([]);
   const [membershipStatus, setMembershipStatus] = useState<Record<string, string>>({});
   const [subscriptionPlan, setSubscriptionPlan] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>("name");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   async function load() {
     const { data: profiles } = await supabase.from("profiles").select("*").eq("role", "driver");
@@ -108,6 +128,51 @@ export default function AdminDriversPage() {
     }
   }, [rows, sortBy, membershipStatus, subscriptionPlan]);
 
+  const filteredRows = useMemo(() => {
+    if (filter === "pending_verification") return sortedRows.filter((r) => r.verification_status === "pending" && !!r.submitted_at);
+    if (filter === "pending_deluxe") return sortedRows.filter((r) => r.deluxe_status === "pending");
+    return sortedRows;
+  }, [sortedRows, filter]);
+
+  function toggleOne(id: string) {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
+  }
+
+  async function bulkVerification(status: "verified" | "rejected") {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    setBulkBusy(true);
+    for (const id of ids) {
+      await fetch(`/api/admin/drivers/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ verification_status: status }),
+      });
+    }
+    setBulkBusy(false);
+    setSelectedIds(new Set());
+    await load();
+  }
+
+  async function bulkDeluxe(action: "certify" | "reject") {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    setBulkBusy(true);
+    for (const id of ids) {
+      await fetch(`/api/admin/drivers/${id}/deluxe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+    }
+    setBulkBusy(false);
+    setSelectedIds(new Set());
+    await load();
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24 text-navy-300">
@@ -119,6 +184,39 @@ export default function AdminDriversPage() {
   return (
     <div className="space-y-5">
       <h1 className="text-2xl font-bold">Drivers ({rows.length})</h1>
+
+      {filter && (
+        <div className="card p-4 bg-gold-50 border-gold-200 flex items-center justify-between gap-3">
+          <p className="text-sm text-gold-700 font-semibold">
+            Showing only: {filter === "pending_verification" ? "verification applications awaiting review" : "Vuma Deluxe applications awaiting review"} ({filteredRows.length})
+          </p>
+          <Link href="/admin/drivers" className="text-xs text-navy-500 flex items-center gap-1 shrink-0">
+            <X className="w-3.5 h-3.5" /> Clear filter
+          </Link>
+        </div>
+      )}
+
+      {filter && filteredRows.length > 0 && (
+        <BulkActionBar
+          selectedCount={selectedIds.size}
+          totalCount={filteredRows.length}
+          allSelected={selectedIds.size === filteredRows.length}
+          onToggleSelectAll={() =>
+            setSelectedIds(selectedIds.size === filteredRows.length ? new Set() : new Set(filteredRows.map((r) => r.user_id)))
+          }
+          actions={
+            filter === "pending_verification"
+              ? [
+                  { label: "Approve", onClick: () => bulkVerification("verified"), busy: bulkBusy },
+                  { label: "Reject", onClick: () => bulkVerification("rejected"), danger: true, busy: bulkBusy },
+                ]
+              : [
+                  { label: "Certify", onClick: () => bulkDeluxe("certify"), busy: bulkBusy },
+                  { label: "Reject", onClick: () => bulkDeluxe("reject"), danger: true, busy: bulkBusy },
+                ]
+          }
+        />
+      )}
 
       <label className="flex items-center gap-2 text-xs text-navy-500">
         <ArrowUpDown className="w-3.5 h-3.5 shrink-0" /> Sort by
@@ -139,6 +237,7 @@ export default function AdminDriversPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-navy-400 border-b border-navy-100">
+              {filter && <th className="p-4 font-medium"></th>}
               <th className="p-4 font-medium">Driver</th>
               <th className="p-4 font-medium">Verification</th>
               <th className="p-4 font-medium">Online</th>
@@ -151,8 +250,18 @@ export default function AdminDriversPage() {
             </tr>
           </thead>
           <tbody>
-            {sortedRows.map((r) => (
+            {filteredRows.map((r) => (
               <tr key={r.user_id} className="border-b border-navy-50 last:border-0">
+                {filter && (
+                  <td className="p-4">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 accent-gold-400"
+                      checked={selectedIds.has(r.user_id)}
+                      onChange={() => toggleOne(r.user_id)}
+                    />
+                  </td>
+                )}
                 <td className="p-4">
                   <p className="font-semibold">{r.profile?.full_name}</p>
                   <p className="text-xs text-navy-400">{r.profile?.phone || r.profile?.email}</p>

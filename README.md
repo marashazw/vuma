@@ -1462,6 +1462,25 @@ simplified and should be hardened before handling real money and real users at s
   standing consent could plausibly change between the list loading and the bulk action
   running, and it's worth saying which ones didn't go through rather than just leaving them
   unmarked with no explanation.
+- **Admin Quick Tasks "Review" links now go straight to a filtered, actionable view, not the
+  general list.** Previously both driver-verification and Deluxe-application tasks linked to
+  the same generic `/admin/drivers` page, sorted by default order, leaving the admin to
+  re-scan the whole driver list to find who actually needed action. Both now link to
+  `/admin/drivers?filter=pending_verification` or `?filter=pending_deluxe`, which show only
+  the matching drivers with a "select all" bulk action bar (Approve/Reject for verification,
+  Certify/Reject for Deluxe) right there — and a "Clear filter" link back to the full list.
+  The filter criteria deliberately matches exactly what Quick Tasks itself counted
+  (`verification_status = 'pending' AND submitted_at is not null` — not just `'pending'`
+  alone, since that's the default for every brand-new signup too, not only real,
+  reviewable applications), so the number someone clicked "Review" on is exactly what shows.
+  **A genuinely broken link found and fixed along the way**: "Duplicate vehicle plate
+  flagged" pointed at `/admin/referrals`, a page with no dedicated section for this at all —
+  the flag is a driver-profile property only shown there incidentally, alongside a referred
+  driver's name. `/admin/fraud` already had a proper, pre-filtered "Duplicate vehicle plate
+  flags" section this whole time; the task link was just pointed at the wrong page. Left this
+  one as a filtered list linking to each driver individually rather than adding bulk actions —
+  a duplicate-plate flag genuinely needs individual investigation (comparing plate numbers
+  across drivers), not something safely resolved in bulk.
 
 ## Publishing to Google Play Store
 
