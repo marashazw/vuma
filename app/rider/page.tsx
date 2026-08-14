@@ -92,6 +92,27 @@ export default function RiderHomePage() {
       }
     })();
 
+    const LAST_LOCATION_KEY = "vuma-last-known-location";
+
+    function cacheLocation(point: Point) {
+      try {
+        localStorage.setItem(LAST_LOCATION_KEY, JSON.stringify(point));
+      } catch {
+        // Storage can fail (private browsing, quota, disabled) — this is
+        // purely a best-effort convenience cache, never worth surfacing
+        // an error over.
+      }
+    }
+
+    function getCachedLocation(): Point | null {
+      try {
+        const raw = localStorage.getItem(LAST_LOCATION_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch {
+        return null;
+      }
+    }
+
     function tryLocate() {
       if (typeof window !== "undefined" && navigator.geolocation) {
         setLocating(true);
@@ -104,21 +125,43 @@ export default function RiderHomePage() {
             // no reason to make the map/marker wait on anything. The
             // address label upgrades in the background once (and if)
             // reverse geocoding succeeds.
-            setPickup({ label: "Current location", lat: latitude, lng: longitude });
+            const point = { label: "Current location", lat: latitude, lng: longitude };
+            setPickup(point);
+            cacheLocation(point);
             setLocating(false);
             reverseGeocode(latitude, longitude)
               .then((label) => {
-                if (label) setPickup((prev) => (prev && prev.lat === latitude && prev.lng === longitude ? { ...prev, label } : prev));
+                if (label) {
+                  setPickup((prev) => {
+                    if (!(prev && prev.lat === latitude && prev.lng === longitude)) return prev;
+                    const updated = { ...prev, label };
+                    cacheLocation(updated);
+                    return updated;
+                  });
+                }
               })
               .catch(() => {});
           },
           () => {
+            // GPS itself failed (permission denied, hardware unavailable,
+            // or — the case this is specifically for — no connection to
+            // resolve a fresh fix at all). Falls back to the last
+            // successfully resolved location from a previous session,
+            // rather than leaving the map on its generic country-level
+            // default with nothing there to explain why. This is what
+            // ConnectivityBanner's own copy already promises
+            // ("Showing your last known location") — previously that was
+            // just aspirational text with nothing behind it.
+            const cached = getCachedLocation();
+            if (cached) setPickup(cached);
             setLocating(false);
             setLocationError(true);
           },
           { timeout: 8000 }
         );
       } else {
+        const cached = getCachedLocation();
+        if (cached) setPickup(cached);
         setLocating(false);
         setLocationError(true);
       }
@@ -395,6 +438,16 @@ export default function RiderHomePage() {
                   </button>
                 </>
               )}
+            </div>
+          )}
+          {pickup && locationError && (
+            <div className="absolute inset-x-0 bottom-0 bg-white/95 backdrop-blur px-4 py-2.5 flex items-center justify-between gap-2 text-sm">
+              <span className="flex items-center gap-2 text-navy-400">
+                <Navigation className="w-4 h-4" /> Showing your last known location
+              </span>
+              <button type="button" className="text-gold-600 font-semibold shrink-0" onClick={() => retryLocationRef.current()}>
+                Try again
+              </button>
             </div>
           )}
         </div>

@@ -1402,6 +1402,17 @@ simplified and should be hardened before handling real money and real users at s
   login and SW install can happen before a user has ever signed in; the existing
   cache-as-actually-visited strategy is safer specifically because it only ever caches what a
   correctly-authenticated user genuinely saw.
+- **Follow-up, same round**: caught that `ConnectivityBanner` already promised "Showing your
+  last known location" when offline — but nothing in the app actually cached or fell back to
+  one; that copy was aspirational, never backed by real behavior. Now genuinely implemented: a
+  successfully resolved location is cached to `localStorage`, and if a later attempt fails
+  (offline, permission denied, GPS unavailable), the rider page falls back to that cached
+  point instead of leaving the map on its generic country-level default with nothing to
+  explain it. Since the map can now show a *meaningful but potentially stale* location even
+  when geolocation has failed, added a distinct banner specifically for that case — "Showing
+  your last known location," reusing the connectivity banner's own existing language rather
+  than introducing separate wording for what is, from the rider's perspective, the same
+  underlying situation — so the source of the map's position is never ambiguous.
 
 ## Publishing to Google Play Store
 
