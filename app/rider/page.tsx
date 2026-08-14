@@ -338,14 +338,6 @@ export default function RiderHomePage() {
         <p className="text-navy-400 text-sm mt-1">Set your route, then name the fare you want to pay.</p>
       </div>
 
-      <Link
-        href="/vuma-private"
-        className="flex items-center justify-between text-xs text-navy-400 hover:text-navy-600 -mt-2"
-      >
-        <span>Going with people you know? Try Vuma Private — cost-share with your own group</span>
-        <span className="shrink-0 ml-2">→</span>
-      </Link>
-
       <div className="card">
         <div className="h-56 overflow-hidden rounded-t-xl2 relative">
           <RideMap
@@ -646,6 +638,11 @@ export default function RiderHomePage() {
           </button>
         </div>
       )}
+
+      <Link href="/vuma-private" className="block text-center text-xs text-navy-400 pt-2 pb-4">
+        Going with people you know?{" "}
+        <span className="text-jade-600 underline font-medium">Try Vuma Private</span> — cost-share with your own group
+      </Link>
     </div>
   );
 }
