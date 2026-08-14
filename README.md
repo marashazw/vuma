@@ -1413,6 +1413,16 @@ simplified and should be hardened before handling real money and real users at s
   your last known location," reusing the connectivity banner's own existing language rather
   than introducing separate wording for what is, from the rider's perspective, the same
   underlying situation — so the source of the map's position is never ambiguous.
+- **Follow-up found through direct testing**: `ConnectivityBanner` already auto-clears on
+  reconnection (it listens for the browser's `online` event), but the rider page's own
+  location fallback above did not — once it had fallen back to a cached last-known location,
+  nothing re-attempted a fresh GPS fix when the connection actually came back; it needed a
+  manual "Try again" tap or a full page refresh even after reconnecting, which is inconsistent
+  with how the generic banner already behaves for the same event. Fixed by listening for the
+  same `online` event and automatically re-calling the existing retry function — but only when
+  currently sitting on the fallback (`locationError`), not on every reconnection regardless of
+  state, since there's no reason to re-trigger anything once geolocation has already succeeded
+  normally.
 
 ## Publishing to Google Play Store
 

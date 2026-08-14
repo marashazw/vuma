@@ -198,6 +198,22 @@ export default function RiderHomePage() {
     };
   }, []);
 
+  // Automatically re-attempts a fresh GPS fix on reconnection, but only
+  // if we're currently sitting on the cached last-known-location fallback
+  // (locationError) — no reason to re-trigger anything if geolocation
+  // already succeeded normally. Previously this state only ever cleared
+  // via a manual "Try again" tap or a full page refresh, even once the
+  // connection genuinely came back — inconsistent with how
+  // ConnectivityBanner itself already auto-recovers on this same event.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    function retryOnReconnect() {
+      if (locationError) retryLocationRef.current();
+    }
+    window.addEventListener("online", retryOnReconnect);
+    return () => window.removeEventListener("online", retryOnReconnect);
+  }, [locationError]);
+
   useEffect(() => {
     if (!pickup || !dropoff) {
       setRoute(null);
