@@ -9,8 +9,10 @@ import { Loader2, Users, Plus, LogIn, Copy, Check, ArrowRight, ShieldCheck, Glob
 import { Logo } from "@/components/ui/Logo";
 
 const DISMISSED_OFFERS_KEY = "vuma-private-dismissed-offers";
+const DISMISSED_MY_OFFERS_KEY = "vuma-private-dismissed-my-offer-statuses";
 
 type PendingOfferAlert = VumaPrivateTripOffer & { requestDestination: string; driverName: string };
+type MyOfferStatusAlert = VumaPrivateTripOffer & { requestDestination: string };
 
 export default function VumaPrivateHubPage() {
   const supabase = createClient();
@@ -28,6 +30,8 @@ export default function VumaPrivateHubPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [pendingOffers, setPendingOffers] = useState<PendingOfferAlert[]>([]);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [myOfferStatuses, setMyOfferStatuses] = useState<MyOfferStatusAlert[]>([]);
+  const [dismissedMyOfferKeys, setDismissedMyOfferKeys] = useState<Set<string>>(new Set());
   const [groupsOpen, setGroupsOpen] = useState(true);
 
   async function load() {
@@ -88,11 +92,43 @@ export default function VumaPrivateHubPage() {
       setPendingOffers([]);
     }
 
+    // Offers the user made themselves, as a driver — the request being
+    // offered on belongs to someone else, so its destination needs its
+    // own fetch, separate from myRequests above (which is specifically
+    // the user's own posted requests).
+    const { data: myOffers } = await supabase
+      .from("vuma_private_trip_offers")
+      .select("*")
+      .eq("driver_id", user.id)
+      .in("status", ["offered", "accepted"])
+      .order("created_at", { ascending: false });
+    const offeredRequestIds = [...new Set((myOffers || []).map((o) => o.trip_request_id))];
+    if (offeredRequestIds.length) {
+      const { data: theirRequests } = await supabase
+        .from("vuma_private_trip_requests")
+        .select("id, destination_address")
+        .in("id", offeredRequestIds);
+      const theirRequestMap: Record<string, string> = {};
+      (theirRequests || []).forEach((r) => (theirRequestMap[r.id] = r.destination_address));
+      setMyOfferStatuses(
+        (myOffers || []).map((o: any) => ({ ...o, requestDestination: theirRequestMap[o.trip_request_id] || "the trip" }))
+      );
+    } else {
+      setMyOfferStatuses([]);
+    }
+
     try {
       const raw = localStorage.getItem(DISMISSED_OFFERS_KEY);
       setDismissedIds(new Set(raw ? JSON.parse(raw) : []));
     } catch {
       setDismissedIds(new Set());
+    }
+
+    try {
+      const raw = localStorage.getItem(DISMISSED_MY_OFFERS_KEY);
+      setDismissedMyOfferKeys(new Set(raw ? JSON.parse(raw) : []));
+    } catch {
+      setDismissedMyOfferKeys(new Set());
     }
 
     setLoading(false);
@@ -173,7 +209,22 @@ export default function VumaPrivateHubPage() {
     }
   }
 
+  function dismissMyOfferStatus(key: string) {
+    const next = new Set(dismissedMyOfferKeys);
+    next.add(key);
+    setDismissedMyOfferKeys(next);
+    try {
+      localStorage.setItem(DISMISSED_MY_OFFERS_KEY, JSON.stringify([...next]));
+    } catch {
+      // Best-effort only.
+    }
+  }
+
   const visibleOffers = pendingOffers.filter((o) => !dismissedIds.has(o.id));
+  // Compound key (offer id + status) rather than just the offer id —
+  // dismissing "still being reviewed" shouldn't also silence a later,
+  // genuinely different "accepted" notification for that same offer.
+  const visibleMyOfferStatuses = myOfferStatuses.filter((o) => !dismissedMyOfferKeys.has(`${o.id}:${o.status}`));
 
   if (loading) {
     return (
@@ -276,6 +327,45 @@ export default function VumaPrivateHubPage() {
                 </button>
               </div>
             ))}
+          </div>
+        )}
+
+        {visibleMyOfferStatuses.length > 0 && (
+          <div className="space-y-2">
+            {visibleMyOfferStatuses.map((o) => {
+              const isAccepted = o.status === "accepted";
+              return (
+                <div
+                  key={`${o.id}:${o.status}`}
+                  className={`card p-4 flex items-start gap-3 ${isAccepted ? "bg-jade-50 border-jade-300" : "bg-gold-50 border-gold-300"}`}
+                >
+                  <Bell className={`w-4 h-4 mt-0.5 shrink-0 ${isAccepted ? "text-jade-600" : "text-gold-600"}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold ${isAccepted ? "text-jade-700" : "text-gold-700"}`}>
+                      {isAccepted
+                        ? `Your offer for ${o.requestDestination} was accepted`
+                        : `Your offer for ${o.requestDestination} is being reviewed`}
+                    </p>
+                    <p className="text-xs text-navy-500 mt-0.5">
+                      {o.seats_available} seat{o.seats_available > 1 ? "s" : ""} · ${o.cost_per_person.toFixed(2)} each
+                    </p>
+                    <Link
+                      href={`/vuma-private/trip-requests/${o.trip_request_id}`}
+                      className={`text-xs font-semibold underline mt-1.5 inline-block ${isAccepted ? "text-jade-700" : "text-gold-700"}`}
+                    >
+                      View trip
+                    </Link>
+                  </div>
+                  <button
+                    onClick={() => dismissMyOfferStatus(`${o.id}:${o.status}`)}
+                    className="text-navy-400 hover:text-navy-600 shrink-0"
+                    aria-label="Dismiss"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
 
