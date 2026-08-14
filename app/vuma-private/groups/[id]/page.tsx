@@ -7,6 +7,7 @@ import { useModal } from "@/components/ui/ModalProvider";
 import type { VumaPrivateGroup, VumaPrivateTripRequest, Profile } from "@/lib/types";
 import { Loader2, Plus, ArrowLeft, MapPin, Users2, Calendar, UserPlus, Check, Clock } from "lucide-react";
 import { format } from "date-fns";
+import { BulkActionBar } from "@/components/ui/BulkActionBar";
 
 export default function GroupDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: groupId } = use(params);
@@ -24,6 +25,8 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   const [loadingCooptable, setLoadingCooptable] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+  const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set());
+  const [bulkAdding, setBulkAdding] = useState(false);
 
   async function load() {
     const {
@@ -108,6 +111,30 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
     setAddedIds((prev) => new Set(prev).add(memberId));
   }
 
+  function toggleMemberSelection(id: string) {
+    const next = new Set(selectedMemberIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedMemberIds(next);
+  }
+
+  async function addSelectedMembers() {
+    const ids = [...selectedMemberIds];
+    if (!ids.length) return;
+    setBulkAdding(true);
+    let failures = 0;
+    for (const id of ids) {
+      const { error } = await supabase.from("vuma_private_group_members").insert({ group_id: groupId, profile_id: id });
+      if (!error) setAddedIds((prev) => new Set(prev).add(id));
+      else failures += 1;
+    }
+    setBulkAdding(false);
+    setSelectedMemberIds(new Set());
+    if (failures) {
+      await modal.alert(`${ids.length - failures} added. ${failures} couldn't be added — they may have changed their preference since this list loaded.`);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen text-navy-300">
@@ -157,25 +184,51 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
             ) : !cooptableMembers.length ? (
               <p className="text-navy-400 text-sm">No members are currently open to being added this way.</p>
             ) : (
-              <div className="space-y-2">
-                {cooptableMembers.map((m) => (
-                  <div key={m.id} className="flex items-center justify-between">
-                    <p className="text-sm text-navy-700">{m.full_name}</p>
-                    {addedIds.has(m.id) ? (
-                      <span className="text-xs text-jade-600 flex items-center gap-1">
-                        <Check className="w-3.5 h-3.5" /> Added
-                      </span>
-                    ) : (
-                      <button
-                        className="btn-ghost !py-1.5 !px-3 !text-xs"
-                        disabled={addingId === m.id}
-                        onClick={() => addMember(m.id)}
-                      >
-                        {addingId === m.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Add"}
-                      </button>
-                    )}
-                  </div>
-                ))}
+              <div>
+                {(() => {
+                  const selectable = cooptableMembers.filter((m) => !addedIds.has(m.id));
+                  return selectable.length > 0 ? (
+                    <BulkActionBar
+                      selectedCount={selectedMemberIds.size}
+                      totalCount={selectable.length}
+                      allSelected={selectedMemberIds.size === selectable.length}
+                      onToggleSelectAll={() =>
+                        setSelectedMemberIds(
+                          selectedMemberIds.size === selectable.length ? new Set() : new Set(selectable.map((m) => m.id))
+                        )
+                      }
+                      actions={[{ label: "Add selected", onClick: addSelectedMembers, busy: bulkAdding }]}
+                    />
+                  ) : null;
+                })()}
+                <div className="space-y-2">
+                  {cooptableMembers.map((m) => (
+                    <div key={m.id} className="flex items-center gap-3">
+                      {!addedIds.has(m.id) && (
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 accent-gold-400"
+                          checked={selectedMemberIds.has(m.id)}
+                          onChange={() => toggleMemberSelection(m.id)}
+                        />
+                      )}
+                      <p className="text-sm text-navy-700 flex-1">{m.full_name}</p>
+                      {addedIds.has(m.id) ? (
+                        <span className="text-xs text-jade-600 flex items-center gap-1">
+                          <Check className="w-3.5 h-3.5" /> Added
+                        </span>
+                      ) : (
+                        <button
+                          className="btn-ghost !py-1.5 !px-3 !text-xs"
+                          disabled={addingId === m.id}
+                          onClick={() => addMember(m.id)}
+                        >
+                          {addingId === m.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Add"}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

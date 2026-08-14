@@ -1451,6 +1451,17 @@ simplified and should be hardened before handling real money and real users at s
   than hiding them outright — that page already functions more like a group's activity
   history than a live feed, and members plausibly want to see "this one expired, nobody
   offered" as context, not have it vanish silently.
+- **Bulk select added to both places in Vuma Private where you pick multiple things** —
+  co-opting members into a group, and choosing which of your groups should see a trip
+  request. Both now have a "select all" toggle and, for co-option specifically, a single "Add
+  selected" bulk action, rather than needing to tap each one individually. Moved
+  `BulkActionBar` from `components/admin/` to `components/ui/` to reuse it here — it was never
+  actually admin-specific, just built there first; the three existing admin pages using it had
+  their imports updated to match, with no change to their own behavior. The bulk-add path
+  tracks and reports partial failures rather than silently skipping them — a member's
+  standing consent could plausibly change between the list loading and the bulk action
+  running, and it's worth saying which ones didn't go through rather than just leaving them
+  unmarked with no explanation.
 
 ## Publishing to Google Play Store
 

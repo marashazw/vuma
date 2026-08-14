@@ -7,7 +7,7 @@ import { useModal } from "@/components/ui/ModalProvider";
 import type { VumaAssociateMembership, RideAccessRestriction, Profile } from "@/lib/types";
 import { Loader2, Users, Check, X, Power, Plus, ArrowRight, ShieldCheck } from "lucide-react";
 import { format } from "date-fns";
-import { BulkActionBar } from "@/components/admin/BulkActionBar";
+import { BulkActionBar } from "@/components/ui/BulkActionBar";
 
 const emptyRestrictionForm = { scope: "all_rides" as "all_rides" | "deluxe_only", startsAt: "", endsAt: "", note: "" };
 

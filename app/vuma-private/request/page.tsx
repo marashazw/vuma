@@ -11,6 +11,7 @@ import { reverseGeocode } from "@/lib/geo";
 import type { VumaPrivateGroup, VumaAssociateMembership } from "@/lib/types";
 import { Logo } from "@/components/ui/Logo";
 import { Loader2, ArrowLeft, Users, Plus, Check, Clock, Sparkles } from "lucide-react";
+import { BulkActionBar } from "@/components/ui/BulkActionBar";
 
 const RideMap = dynamic(() => import("@/components/map/RideMap"), { ssr: false });
 
@@ -299,6 +300,17 @@ export default function VumaPrivateRequestPage() {
 
             {!showNewGroup && groups.length > 0 && (
               <div className="space-y-2">
+                {groups.length > 1 && (
+                  <BulkActionBar
+                    selectedCount={selectedGroupIds.size}
+                    totalCount={groups.length}
+                    allSelected={selectedGroupIds.size === groups.length}
+                    onToggleSelectAll={() =>
+                      setSelectedGroupIds(selectedGroupIds.size === groups.length ? new Set() : new Set(groups.map((g) => g.id)))
+                    }
+                    actions={[]}
+                  />
+                )}
                 {groups.map((g) => (
                   <label key={g.id} className={`card p-4 flex items-center gap-3 cursor-pointer ${selectedGroupIds.has(g.id) ? "border-jade-400" : ""}`}>
                     <input type="checkbox" className="w-4 h-4 accent-gold-400" checked={selectedGroupIds.has(g.id)} onChange={() => toggleGroup(g.id)} />

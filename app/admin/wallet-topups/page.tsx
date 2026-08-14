@@ -7,7 +7,7 @@ import { currencyFormat } from "@/lib/commission";
 import type { DriverWalletTopup, Profile } from "@/lib/types";
 import { Loader2, Paperclip, Check, X } from "lucide-react";
 import { format } from "date-fns";
-import { BulkActionBar } from "@/components/admin/BulkActionBar";
+import { BulkActionBar } from "@/components/ui/BulkActionBar";
 
 export default function AdminWalletTopupsPage() {
   const supabase = createClient();
