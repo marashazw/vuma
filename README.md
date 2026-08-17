@@ -1498,6 +1498,22 @@ simplified and should be hardened before handling real money and real users at s
   Private wallet") even though the underlying payment details are identical. No new admin UI
   needed — Admin → Subscriptions already manages this content, and now it powers wallet
   top-ups too.
+- **Persistent pending-offer notification on the Vuma Private hub page** — shows above
+  everything else, including the page title, when someone has offered to help with a trip
+  request the member posted themselves. Placed there deliberately: reviewing an offer is
+  plausibly the actual reason someone came back to this page, not to create another request,
+  so it shouldn't be buried below the group list. Stays up until dismissed, or until the
+  offer is actually accepted or declined — the latter happens naturally rather than needing
+  special-case logic, since an accepted/declined offer no longer matches the `status =
+  'offered'` filter the query already uses. Dismissal is per-offer and persists in
+  `localStorage`, so dismissing one doesn't hide a different, genuinely new offer that comes
+  in later — each has its own id, and only dismissed ids are ever filtered out.
+  - **Mirror-image notification for the person who made the offer** — same visible placement,
+    same style, but tells the *driver* side the status of an offer they made on someone
+    else's request: "being reviewed" while still pending, "accepted" once the requester locks
+    it in. Dismissal uses a compound key (offer id + status), not just the offer id — so
+    dismissing "still being reviewed" doesn't also silently swallow a later, genuinely
+    different "accepted" notification for that same offer once it actually happens.
 
 ## Publishing to Google Play Store
 

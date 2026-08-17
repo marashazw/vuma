@@ -17,7 +17,7 @@ export default function TermsPage() {
 
       <div className="max-w-3xl mx-auto px-5 py-10 legal-content">
         <h1 className="text-3xl font-bold mb-2">Vuma Terms of Service</h1>
-        <p className="text-navy-400 text-sm mb-8">Last updated: [DATE — update before publishing]</p>
+        <p className="text-navy-400 text-sm mb-8">Last updated: 17 August 2026</p>
 
         {/*
           NOTE FOR LEGAL REVIEWER — not rendered on the page, this comment
@@ -27,8 +27,8 @@ export default function TermsPage() {
         */}
         <p>
           These terms govern your use of Vuma. By creating an account, you agree to them. Vuma is
-          operated by [LEGAL ENTITY NAME], of [REGISTERED ADDRESS]. These terms are governed by the laws
-          of [GOVERNING JURISDICTION].
+          operated by Pearson Marasha, trading as Vuma, of Harare, Zimbabwe. These terms are governed by the laws
+          of Zimbabwe.
         </p>
 
         <h2>1. What Vuma is</h2>
@@ -172,7 +172,7 @@ export default function TermsPage() {
 
         <h2>9. Contact us</h2>
         <p>
-          Questions about these terms can be sent to <a href="mailto:legal@example.com">[REPLACE: legal@yourdomain.com]</a>.
+          Questions about these terms can be sent to <a href="mailto:pmarashazw@gmail.com">pmarashazw@gmail.com</a>.
         </p>
       </div>
     </main>

@@ -17,13 +17,12 @@ export default function PrivacyPolicyPage() {
 
       <div className="max-w-3xl mx-auto px-5 py-10 legal-content">
         <h1 className="text-3xl font-bold mb-2">Vuma Privacy Policy</h1>
-        <p className="text-navy-400 text-sm mb-8">Last updated: [DATE — update before publishing]</p>
+        <p className="text-navy-400 text-sm mb-8">Last updated: 17 August 2026</p>
 
         <p>
           This policy explains what information Vuma ("we," "our," "the app") collects from riders and
           drivers, why we collect it, who can see it, and the choices you have. Vuma operates in South
-          Africa and Zimbabwe. [REPLACE: legal entity name, registration number, and registered address
-          before publishing.]
+          Africa and Zimbabwe, and is operated by Pearson Marasha, trading as Vuma, of Harare, Zimbabwe.
         </p>
 
         <h2>1. Information we collect</h2>
@@ -74,14 +73,14 @@ export default function PrivacyPolicyPage() {
           We retain account and trip information for as long as your account is active and as needed to
           comply with legal, tax, or dispute-resolution obligations. Driver verification documents are
           retained for the duration of the driver's active status on the platform plus any legally
-          required retention period. You can request deletion of your account as described below.
+          required retention period. You can request <Link href="/delete-account">deletion of your account</Link> at any time.
         </p>
 
         <h2>5. Your choices and rights</h2>
         <ul>
           <li>You can edit your name and phone number at any time in Settings.</li>
           <li>You can control location permissions through your device settings; note that some features (ride matching, live tracking) will not work without location access.</li>
-          <li>You can request a copy of your data or request that we delete your account by contacting us (see below). We may retain limited records where required by law (e.g., completed trip and payment records for financial/tax compliance).</li>
+          <li>You can request a copy of your data or <Link href="/delete-account">request that we delete your account</Link>. We may retain limited records where required by law (e.g., completed trip and payment records for financial/tax compliance).</li>
         </ul>
 
         <h2>6. Children's privacy</h2>
@@ -106,7 +105,7 @@ export default function PrivacyPolicyPage() {
         <h2>9. Contact us</h2>
         <p>
           Questions about this policy or your data can be sent to{" "}
-          <a href="mailto:privacy@example.com">[REPLACE: privacy@yourdomain.com]</a>.
+          <a href="mailto:pmarashazw@gmail.com">pmarashazw@gmail.com</a>.
         </p>
       </div>
     </main>

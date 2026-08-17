@@ -88,8 +88,8 @@ for ride-hailing apps.
 ride hailing, rideshare, taxi, South Africa, Zimbabwe, driver, fare negotiation
 
 ## Contact details (required)
-- **Email**: `[REPLACE: support@yourdomain.com]`
-- **Phone** (optional but recommended for ride-hailing category): `[REPLACE]`
+- **Email**: `pmarashazw@gmail.com`
+- **Phone** (optional but recommended for ride-hailing category): not provided — optional, can add later from Play Console if you get a dedicated business number
 - **Website**: `https://vuma-self.vercel.app` (or your custom domain)
 
 ## Privacy Policy URL (required)
@@ -156,7 +156,9 @@ what Vuma's code actually does (updated for the current feature set):
 | App activity / diagnostics | Yes | Reliability | No |
 
 Declare data is **encrypted in transit** (Supabase/HTTPS — true) and that users
-can **request deletion** (true — via the contact email in your privacy policy).
+can **request deletion** — true, via a dedicated page at `https://vuma-self.vercel.app/delete-account`
+(this is the URL to enter in Play Console's Data Safety form when it asks for an account/data
+deletion link).
 
 ---
 
