@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, use } from "react";
+import { useEffect, useState, useCallback, useRef, use } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -50,6 +50,7 @@ export default function RiderRideDetailPage({ params }: { params: Promise<{ id: 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("default");
   const [stars, setStars] = useState(5);
   const [tagPoliteness, setTagPoliteness] = useState<"polite" | "rude" | null>(null);
   const [tagPunctuality, setTagPunctuality] = useState<"on_time" | "very_late" | null>(null);
@@ -250,6 +251,46 @@ export default function RiderRideDetailPage({ params }: { params: Promise<{ id: 
     // already throttled by the GPS update rate + maximumAge on the watch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ride?.status, driver?.current_lat, driver?.current_lng]);
+
+  // "Driver is arriving" alert — same local Notification pattern already
+  // proven in TripReminder (foreground/backgrounded tab only, not a true
+  // wakes-the-device-when-closed push — that needs separate VAPID/push
+  // infrastructure not built here), plus a vibration "buzzer" alongside it.
+  // Fires once per ride, tracked via a ref keyed to rideId, so it doesn't
+  // re-fire every time the route recalculates around the threshold as the
+  // driver's GPS updates keep coming in.
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setNotifPermission(Notification.permission);
+    } else {
+      setNotifPermission("unsupported");
+    }
+  }, []);
+
+  async function enableArrivalNotifications() {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    const perm = await Notification.requestPermission();
+    setNotifPermission(perm);
+  }
+
+  const arrivalAlertFiredRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!ride || !approachRoute) return;
+    if (arrivalAlertFiredRef.current === ride.id) return;
+    if (approachRoute.etaMin > 2) return;
+
+    arrivalAlertFiredRef.current = ride.id;
+
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+      new Notification("Vuma — your driver is arriving", {
+        body: "Your driver is almost at the pickup point. Head out when you're ready.",
+        icon: "/icon-512.png",
+      });
+    }
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate([200, 100, 200]);
+    }
+  }, [ride, approachRoute]);
 
   async function acceptOffer(offer: RideOffer) {
     setBusy(true);
@@ -565,6 +606,15 @@ export default function RiderRideDetailPage({ params }: { params: Promise<{ id: 
               <p className="text-xs text-navy-400 mt-4">Waiting for your driver's location&hellip;</p>
             );
           })()}
+
+          {approachRoute && notifPermission !== "unsupported" && notifPermission !== "granted" && (
+            <button
+              onClick={enableArrivalNotifications}
+              className="text-xs text-jade-600 underline text-center block mx-auto mt-2"
+            >
+              Get notified when your driver arrives
+            </button>
+          )}
 
           {ride?.is_scheduled ? (
             userId && (

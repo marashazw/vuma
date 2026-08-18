@@ -1514,6 +1514,26 @@ simplified and should be hardened before handling real money and real users at s
     it in. Dismissal uses a compound key (offer id + status), not just the offer id — so
     dismissing "still being reviewed" doesn't also silently swallow a later, genuinely
     different "accepted" notification for that same offer once it actually happens.
+- **"Driver is arriving" alert for the rider**, on the regular (non-Vuma-Private) ride detail
+  page. Reuses infrastructure that already existed rather than building anything new from
+  scratch: the page already recalculated the driver's live ETA/distance to pickup on every GPS
+  update and displayed "Arriving in ~X min" — the only missing piece was an actual alert at
+  the right moment. Fires once, when ETA first drops to 2 minutes or under, tracked via a ref
+  keyed to the ride id so it doesn't re-fire repeatedly as the route recalculates around that
+  threshold. Two channels: a local browser `Notification` (same pattern already proven in
+  `TripReminder` for scheduled-trip reminders — this only works while the tab is open or
+  backgrounded, not a true wakes-the-device-when-fully-closed push, which would need separate
+  VAPID-key/push-subscription infrastructure not built here) and `navigator.vibrate()` as the
+  requested "buzzer." **A real gap caught while wiring this up**: `TripReminder` — the only
+  existing place with an "enable notifications" prompt — isn't mounted on this specific ride
+  page at all, so a rider going straight from booking to their active ride (the normal, likely
+  path) would never have been asked for permission, silently limiting the alert to vibration
+  only. Added a small, contextual "Get notified when your driver arrives" prompt directly on
+  this page instead of assuming the rider had already granted permission somewhere else.
+  **Known limitation, platform-level, not fixable from this codebase**: `navigator.vibrate()`
+  has no effect on iOS Safari — Apple has never implemented the Vibration API. Given this
+  project's Play Store/Android focus, likely an acceptable gap, but worth knowing rather than
+  discovering silently.
 
 ## Publishing to Google Play Store
 
