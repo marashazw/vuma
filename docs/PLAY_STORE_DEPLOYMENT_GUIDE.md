@@ -41,7 +41,7 @@ moving on — see the box just below.
 ### Should you rebuild the APK/AAB first?
 
 **Short answer: no, not because of new features.** A TWA doesn't embed your
-web app's code — it's a thin wrapper that loads `vuma-self.vercel.app` live,
+web app's code — it's a thin wrapper that loads `vumarides.app` live,
 the same way it would in a browser tab, just without the browser chrome. Every
 feature built since the APK was tested (the driver wallet, scheduled rides,
 the Drivers Forum, the accounting console, all of it) is *already* live
@@ -60,6 +60,33 @@ through a few of the newer screens — Wallet, Forum, a scheduled ride request
 normal browser tab. This costs a few minutes and catches anything
 TWA-specific (unlikely, but cheap to rule out) before it's in front of Google
 or real testers.
+
+---
+
+## Domain migration note (vuma-self.vercel.app → vumarides.app)
+
+`twa-manifest.json`, `PLAY_STORE_LISTING.md`, and this guide have all been updated to
+reference `vumarides.app`. That's the code/docs side — three things still need doing
+outside this repo, none of which are automatic:
+
+1. **Add `vumarides.app` as a domain in the Vercel project settings**, and confirm it
+   actually resolves and serves the app before touching anything else below.
+2. **Update the `NEXT_PUBLIC_APP_URL` environment variable in Vercel** to
+   `https://vumarides.app`. The app already reads this dynamically everywhere it needs
+   an absolute URL (subscription purchase links, etc.) — no code change needed once this
+   is set, just a redeploy to pick it up.
+3. **Update `C:\vuma-android\twa-manifest.json` to match, then rebuild the `.aab`.** This
+   is the one that's easy to miss: the copy of `twa-manifest.json` in *this* repo is a
+   reference copy — the actual file Bubblewrap builds from lives in the separate Android
+   project folder, and editing this repo's copy does nothing to that build on its own.
+   The `host` field is baked into the native shell at build time, unlike ordinary content
+   changes (which the installed app always picks up live, no rebuild needed) — a domain
+   change specifically requires a fresh `.aab`. Given the app was rejected before any
+   tester ever opted in, there's no testing progress at stake in rebuilding now.
+
+`assetlinks.json` itself needs no code change — as long as `vumarides.app` points at the
+same Vercel project as before, the existing file (with its already-correct signing-key
+fingerprint) is served there automatically.
 
 ---
 
@@ -160,7 +187,7 @@ both really you — this is what Digital Asset Links does.
 4. **Deploy this change to your live Vuma site** (commit, push, let Vercel
    redeploy) — the file must be reachable at exactly:
    ```
-   https://vuma-self.vercel.app/.well-known/assetlinks.json
+   https://vumarides.app/.well-known/assetlinks.json
    ```
 5. Verify it's live by visiting that URL directly in a browser — you should
    see the JSON, not a 404.
@@ -306,5 +333,5 @@ case, repeat Steps 3–5 with the **same signing key** and upload the new
   straightforward for TWAs, but if your app later adds features Google
   restricts more heavily (e.g., background location), expect closer review.
 - **You are responsible for keeping the underlying site up.** If
-  `vuma-self.vercel.app` (or your production domain) goes down, so does the
+  `vumarides.app` goes down, so does the
   Play Store app — there's no separate "native" fallback.
