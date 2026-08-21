@@ -56,7 +56,9 @@ export function InstallPrompt() {
             <Download className="w-5 h-5 text-gold-400 shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="font-semibold text-sm">Install Vuma</p>
-              <p className="text-xs text-navy-300 mt-0.5">Add it to your home screen for quick, app-like access.</p>
+              <p className="text-xs text-navy-300 mt-0.5">
+                If you see a security warning, tap "Install anyway" — the app is safe.
+              </p>
               <button className="btn-primary !py-1.5 !px-3 text-xs mt-2" onClick={install}>
                 Install
               </button>
