@@ -57,7 +57,8 @@ export function InstallPrompt() {
             <div className="flex-1">
               <p className="font-semibold text-sm">Install Vuma</p>
               <p className="text-xs text-navy-300 mt-0.5">
-                If you see a security warning, tap "Install anyway" — the app is safe.
+                If you see a security warning, tap "More details", "Install anyway" — the app is safe,
+                just not on Play Store yet.
               </p>
               <button className="btn-primary !py-1.5 !px-3 text-xs mt-2" onClick={install}>
                 Install
