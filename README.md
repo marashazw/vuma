@@ -1534,6 +1534,35 @@ simplified and should be hardened before handling real money and real users at s
   has no effect on iOS Safari — Apple has never implemented the Vibration API. Given this
   project's Play Store/Android focus, likely an acceptable gap, but worth knowing rather than
   discovering silently.
+- **"Is everything OK?" safety check** — fires when an in-progress trip runs to roughly 4x its
+  own estimated duration, a deliberately generous multiplier meant to catch genuinely
+  anomalous situations (breakdown, serious detour, distress) rather than normal traffic
+  variance. The estimate itself is derived from `distance_km` already on the ride record using
+  an assumed average speed, captured once at trip start — deliberately not a call to the
+  routing endpoint for a precise ETA, since a rough figure is entirely adequate for a 4x safety
+  threshold and avoids an unnecessary internal round-trip. Checked client-side on an interval
+  (no reliable cron on this hosting tier, same constraint documented elsewhere in this file),
+  but the trigger itself is persisted to the database the moment it fires, not just held in
+  local state — survives a page reload, won't fire twice. Shows the driver two options, no
+  dismiss available (deliberate — a genuine safety check shouldn't be ignorable): "I'm safe —
+  mark ride completed," reusing the existing complete-ride flow directly, or "SOS," reusing the
+  existing `/api/sos/trigger` endpoint directly rather than duplicating that logic.
+- **Rider live-location sharing, for when a pickup address can't be found** — similar to
+  WhatsApp's live location sharing. The driver's location was already continuously broadcast
+  to the rider; this fills the missing direction (rider to driver), for situations like an
+  imprecise address in an informal settlement or a vague rural landmark. `RideMap` gained a new
+  `riderLocation` marker prop, mirroring the existing `driverLocation` prop exactly (same
+  pattern, distinct jade color) rather than a parallel, differently-shaped implementation.
+  **Two real gaps caught and fixed while building this, not just the happy path**: if the rider
+  closes the tab mid-share, the "active" database flag would otherwise stay true forever with
+  no further updates ever correcting it — fixed with a staleness check on the driver's display
+  side (treats sharing as inactive if the last update is more than 3 minutes old), rather than
+  needing a backend sweep job for what's a low-stakes, self-correcting display concern. Second:
+  if the ride's status changes while actively sharing (trip starts, or gets cancelled), the
+  toggle button itself disappears from the UI — without an explicit check for this, the
+  underlying `watchPosition` would keep running in the background with no way left to stop it,
+  silently draining battery. Fixed by auto-stopping the share whenever the ride moves past
+  `accepted`.
 
 ## Publishing to Google Play Store
 

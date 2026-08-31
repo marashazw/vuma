@@ -51,6 +51,8 @@ export default function RiderRideDetailPage({ params }: { params: Promise<{ id: 
   const [busy, setBusy] = useState(false);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("default");
+  const [sharingLiveLocation, setSharingLiveLocation] = useState(false);
+  const liveLocationWatchIdRef = useRef<number | null>(null);
   const [stars, setStars] = useState(5);
   const [tagPoliteness, setTagPoliteness] = useState<"polite" | "rude" | null>(null);
   const [tagPunctuality, setTagPunctuality] = useState<"on_time" | "very_late" | null>(null);
@@ -291,6 +293,69 @@ export default function RiderRideDetailPage({ params }: { params: Promise<{ id: 
       navigator.vibrate([200, 100, 200]);
     }
   }, [ride, approachRoute]);
+
+  // "Can't find each other? Share live location" — for when the pickup
+  // address itself is imprecise or hard to locate (informal settlements,
+  // rural areas, vague landmarks), the rider can share their exact,
+  // continuously-updating position instead, similar to WhatsApp's live
+  // location sharing. Distinct from the driver's own always-on location
+  // broadcast, which already exists — this fills the missing direction
+  // (rider to driver), not a duplicate of what's already there.
+  function startSharingLiveLocation() {
+    if (!navigator.geolocation) return;
+    setSharingLiveLocation(true);
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        supabase
+          .from("rides")
+          .update({
+            rider_live_location_active: true,
+            rider_live_location_lat: pos.coords.latitude,
+            rider_live_location_lng: pos.coords.longitude,
+            rider_live_location_updated_at: new Date().toISOString(),
+          })
+          .eq("id", rideId)
+          .then();
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 5000 }
+    );
+    liveLocationWatchIdRef.current = watchId;
+  }
+
+  function stopSharingLiveLocation() {
+    if (liveLocationWatchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(liveLocationWatchIdRef.current);
+      liveLocationWatchIdRef.current = null;
+    }
+    setSharingLiveLocation(false);
+    supabase.from("rides").update({ rider_live_location_active: false }).eq("id", rideId).then();
+  }
+
+  // Stop the underlying GPS watch if the rider navigates away mid-share —
+  // doesn't touch the database row here (a genuinely closed tab can't run
+  // this cleanup either way), but at minimum stops draining battery on a
+  // device that's still open elsewhere in the app.
+  useEffect(() => {
+    return () => {
+      if (liveLocationWatchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(liveLocationWatchIdRef.current);
+      }
+    };
+  }, []);
+
+  // If the ride moves past "accepted" (trip starts, or gets cancelled)
+  // while the rider is actively sharing, the toggle button itself
+  // disappears from the UI (only shown during "accepted") — without this,
+  // the underlying watchPosition would keep running with no way left to
+  // stop it, silently draining battery and still writing location updates
+  // nobody's asking for anymore.
+  useEffect(() => {
+    if (ride && ride.status !== "accepted" && liveLocationWatchIdRef.current !== null) {
+      stopSharingLiveLocation();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ride?.status]);
 
   async function acceptOffer(offer: RideOffer) {
     setBusy(true);
@@ -614,6 +679,20 @@ export default function RiderRideDetailPage({ params }: { params: Promise<{ id: 
             >
               Get notified when your driver arrives
             </button>
+          )}
+
+          {ride?.status === "accepted" && (
+            <div className="mt-3 text-center">
+              {sharingLiveLocation ? (
+                <button onClick={stopSharingLiveLocation} className="text-xs font-semibold text-coral-600">
+                  Stop sharing my live location
+                </button>
+              ) : (
+                <button onClick={startSharingLiveLocation} className="text-xs text-navy-400 underline">
+                  Can't find each other? Share your live location
+                </button>
+              )}
+            </div>
           )}
 
           {ride?.is_scheduled ? (

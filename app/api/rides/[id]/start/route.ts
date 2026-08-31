@@ -165,11 +165,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
   }
 
+  // Rough estimate from distance already on the ride record, using an
+  // assumed average speed — avoids an extra internal round-trip to the
+  // routing endpoint for what's only a safety threshold, not something
+  // needing precise ETA math. The 4x multiplier applied when actually
+  // checking this later already builds in generous slack for traffic,
+  // stops, etc., so a rough figure here is entirely adequate.
+  const assumedAvgSpeedKmh = 30;
+  const estimatedDurationMin = ride.distance_km ? Math.max((ride.distance_km / assumedAvgSpeedKmh) * 60, 5) : null;
+
   const { error } = await admin
     .from("rides")
     .update({
       status: "in_progress",
       started_at: new Date().toISOString(),
+      estimated_duration_min: estimatedDurationMin,
       wallet_commission_charged: resolved.amount,
       wallet_commission_pct: resolved.pct,
       tax_levy_charged: taxLevies.total,

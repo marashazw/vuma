@@ -36,6 +36,7 @@ const pickupIcon = L.divIcon({
 });
 const dropoffIcon = makeIcon("#FF6B5A");
 const driverIcon = makeIcon("#F2A93B");
+const riderLocationIcon = makeIcon("#1F9D77");
 const stopIcon = makeIcon("#2E4A72");
 const liveLocationIcon = L.divIcon({
   className: "",
@@ -113,6 +114,10 @@ export interface RideMapProps {
   /** Intermediate stops between pickup and dropoff, in order. */
   stops?: [number, number][];
   driverLocation?: [number, number] | null;
+  /** The rider's own shared live location — distinct from `pickup` (the
+   * chosen request point) for when that point is hard to find and the
+   * rider has opted to share exactly where they are instead. */
+  riderLocation?: [number, number] | null;
   /** The rider's/driver's own continuously-updating current position — a
    * distinct blue dot, separate from the pickup pin (which is the chosen
    * request point, not necessarily where the device currently is). */
@@ -141,6 +146,7 @@ export default function RideMap({
   dropoff,
   stops = [],
   driverLocation,
+  riderLocation,
   liveLocation,
   routeGeometry,
   className,
@@ -206,6 +212,11 @@ export default function RideMap({
         {driverLocation && (
           <Marker position={driverLocation} icon={driverIcon}>
             <Popup>Driver</Popup>
+          </Marker>
+        )}
+        {riderLocation && (
+          <Marker position={riderLocation} icon={riderLocationIcon}>
+            <Popup>Rider's shared location</Popup>
           </Marker>
         )}
         {liveLocation && <Marker position={liveLocation} icon={liveLocationIcon} />}

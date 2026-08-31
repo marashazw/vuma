@@ -145,6 +145,13 @@ export interface Ride {
   accepted_at: string | null;
   started_at: string | null;
   completed_at: string | null;
+  estimated_duration_min: number | null;
+  safety_check_status: "none" | "triggered" | "responded";
+  safety_check_triggered_at: string | null;
+  rider_live_location_active: boolean;
+  rider_live_location_lat: number | null;
+  rider_live_location_lng: number | null;
+  rider_live_location_updated_at: string | null;
 }
 
 export interface RideOffer {

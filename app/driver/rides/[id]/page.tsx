@@ -46,6 +46,8 @@ function DriverRideDetailInner({ params }: { params: Promise<{ id: string }> }) 
   const [remainingCreditRoom, setRemainingCreditRoom] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [showSafetyCheck, setShowSafetyCheck] = useState(false);
+  const [safetyCheckBusy, setSafetyCheckBusy] = useState(false);
   const [completion, setCompletion] = useState<{
     fare: number;
     commissionPct: number;
@@ -198,6 +200,58 @@ function DriverRideDetailInner({ params }: { params: Promise<{ id: string }> }) 
     setBusy(false);
   }
 
+  // "Is everything OK?" check — fires once a trip has run to roughly 4x its
+  // own estimated duration, a generous multiplier meant to catch genuinely
+  // anomalous situations (breakdown, detour, distress) rather than normal
+  // traffic variance. Checked client-side on an interval rather than a
+  // server-side scheduled job, matching this app's established pattern
+  // elsewhere of no reliable cron on this hosting tier — but the trigger
+  // itself is persisted to the database the moment it fires, not just held
+  // in local state, so it survives a page reload and won't fire twice.
+  useEffect(() => {
+    if (!ride || ride.status !== "in_progress" || ride.safety_check_status !== "none") return;
+    if (!ride.started_at || !ride.estimated_duration_min) return;
+
+    function checkOverdue() {
+      const elapsedMin = (Date.now() - new Date(ride!.started_at!).getTime()) / 60000;
+      if (elapsedMin >= ride!.estimated_duration_min! * 4) {
+        setShowSafetyCheck(true);
+        supabase.from("rides").update({ safety_check_status: "triggered", safety_check_triggered_at: new Date().toISOString() }).eq("id", rideId).then();
+      }
+    }
+
+    checkOverdue();
+    const interval = setInterval(checkOverdue, 60_000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ride?.status, ride?.safety_check_status, ride?.started_at, ride?.estimated_duration_min]);
+
+  async function respondSafetyCheckCompleted() {
+    setSafetyCheckBusy(true);
+    await supabase.from("rides").update({ safety_check_status: "responded" }).eq("id", rideId);
+    setShowSafetyCheck(false);
+    await completeTrip();
+    setSafetyCheckBusy(false);
+  }
+
+  async function respondSafetyCheckSOS() {
+    setSafetyCheckBusy(true);
+    await supabase.from("rides").update({ safety_check_status: "responded" }).eq("id", rideId);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        await fetch("/api/sos/trigger", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ rideId, lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        });
+        setSafetyCheckBusy(false);
+        setShowSafetyCheck(false);
+      });
+    } else {
+      setSafetyCheckBusy(false);
+    }
+  }
+
   async function creditChange() {
     if (!changeAmount || Number(changeAmount) <= 0) return;
     setCreditingChange(true);
@@ -297,14 +351,30 @@ function DriverRideDetailInner({ params }: { params: Promise<{ id: string }> }) 
         <StatusPill status={ride.status} />
       </div>
 
-      <div className="card overflow-hidden h-56">
-        <RideMap
-          pickup={[ride.pickup_lat, ride.pickup_lng]}
-          dropoff={[ride.dropoff_lat, ride.dropoff_lng]}
-          stops={stops.map((s) => [s.lat, s.lng])}
-          routeGeometry={routeGeometry}
-        />
-      </div>
+      {(() => {
+        const riderSharingLive =
+          ride.rider_live_location_active &&
+          ride.rider_live_location_lat &&
+          ride.rider_live_location_lng &&
+          ride.rider_live_location_updated_at &&
+          Date.now() - new Date(ride.rider_live_location_updated_at).getTime() < 3 * 60_000;
+        return (
+          <>
+            <div className="card overflow-hidden h-56">
+              <RideMap
+                pickup={[ride.pickup_lat, ride.pickup_lng]}
+                dropoff={[ride.dropoff_lat, ride.dropoff_lng]}
+                stops={stops.map((s) => [s.lat, s.lng])}
+                routeGeometry={routeGeometry}
+                riderLocation={riderSharingLive ? [ride.rider_live_location_lat!, ride.rider_live_location_lng!] : null}
+              />
+            </div>
+            {riderSharingLive && (
+              <p className="text-xs text-jade-600 font-semibold text-center -mt-3">Rider is sharing their live location</p>
+            )}
+          </>
+        );
+      })()}
 
       <div className="card p-5">
         <p className="label mb-1">Agreed fare</p>
@@ -573,6 +643,26 @@ function DriverRideDetailInner({ params }: { params: Promise<{ id: string }> }) 
           <button className="btn-dark w-full mt-4" onClick={() => router.push("/driver")}>
             Back to requests
           </button>
+        </div>
+      )}
+
+      {showSafetyCheck && (
+        <div className="fixed inset-0 bg-navy-900/60 flex items-center justify-center z-50 px-5">
+          <div className="card p-6 max-w-sm text-center">
+            <AlertTriangle className="w-8 h-8 text-gold-500 mx-auto mb-3" />
+            <p className="font-bold text-navy-800 mb-1">Is everything OK?</p>
+            <p className="text-sm text-navy-500 mb-5">
+              This trip has taken much longer than expected. Let us know what's happening.
+            </p>
+            <div className="space-y-2">
+              <button className="btn-primary w-full" disabled={safetyCheckBusy} onClick={respondSafetyCheckCompleted}>
+                {safetyCheckBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "I'm safe — mark ride completed"}
+              </button>
+              <button className="btn-danger w-full" disabled={safetyCheckBusy} onClick={respondSafetyCheckSOS}>
+                {safetyCheckBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "SOS — I need help"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
