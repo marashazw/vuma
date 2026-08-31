@@ -445,9 +445,20 @@ function DriverRideDetailInner({ params }: { params: Promise<{ id: string }> }) 
         </div>
       )}
 
-      {(ride.status === "accepted" || ride.status === "in_progress") && (
-        <ContactCard rideId={ride.id} otherUserId={ride.rider_id} otherRoleLabel="rider" />
-      )}
+      {(() => {
+        const within24hOfCompletion =
+          ride.status === "completed" && ride.completed_at && Date.now() - new Date(ride.completed_at).getTime() < 24 * 60 * 60 * 1000;
+        const showContact = ride.status === "accepted" || ride.status === "in_progress" || within24hOfCompletion;
+        if (!showContact) return null;
+        return (
+          <div className="space-y-2">
+            {within24hOfCompletion && (
+              <p className="text-xs text-navy-400 text-center">Left something in the car? You can still reach the rider.</p>
+            )}
+            <ContactCard rideId={ride.id} otherUserId={ride.rider_id} otherRoleLabel="rider" canCall={true} />
+          </div>
+        );
+      })()}
 
       {(ride.status === "accepted" || ride.status === "in_progress") && (
         <SosPanel rideId={ride.id} country={ride.country} isDeluxe={ride.is_deluxe} />

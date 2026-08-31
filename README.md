@@ -1563,6 +1563,35 @@ simplified and should be hardened before handling real money and real users at s
   underlying `watchPosition` would keep running in the background with no way left to stop it,
   silently draining battery. Fixed by auto-stopping the share whenever the ride moves past
   `accepted`.
+- **In-app masked voice calls between rider and driver** — free-tier WebRTC approach, chosen
+  deliberately over a paid telephony provider for now, upgradeable later. No phone numbers are
+  ever exchanged between the two parties or exposed to either side — calls are
+  browser-to-browser audio, signaled through a Supabase Realtime broadcast channel scoped to
+  the ride (`ride-call-{rideId}`), the first use of pure broadcast (as opposed to
+  `postgres_changes`) anywhere in this codebase. Available during an active ride (`accepted` or
+  `in_progress`) and for 24 hours after completion, for the "left something in the car" case —
+  extending that window required a real fix, not just new props: `ContactCard` previously
+  vanished entirely once a ride completed, making the post-completion case unreachable no
+  matter what was built underneath it. Call history (`ride_calls`) is both filtered to 24 hours
+  at query time and actually deleted by a new sweep past that point — matching "only available
+  in history for 24hrs" literally, not just hiding old rows that still pile up forever
+  underneath. **A real, pre-existing privacy bug found and fixed while building this**:
+  `ContactCard`'s existing "Call" button was a plain `tel:` link using the other party's actual
+  phone number — the exact opposite of what masked calling is supposed to guarantee, and it
+  was already live on both ride pages before any of this work started. Replaced it outright
+  rather than adding the new component alongside it, since leaving both would mean the
+  privacy-violating option was still sitting right there. Also stopped fetching the other
+  party's phone number into client-side state at all now that nothing displays or uses it — an
+  unnecessary exposure once it serves no purpose. **A genuine stale-closure bug caught before
+  shipping**: the WebRTC signaling callbacks are registered once in an effect keyed only to
+  `rideId`, so referencing the `state` variable directly inside them would have always read its
+  value from the moment the channel first subscribed, never the actual current state — fixed
+  with a ref kept in sync via a separate effect, read from inside the callbacks instead.
+  **Disclosed limitation, not hidden**: this free tier uses only Google's public STUN servers,
+  no TURN server — calls can fail to connect on some mobile networks, particularly behind
+  carrier-grade NAT, which is common in exactly the markets this app targets. The UI says so
+  directly rather than presenting a silent, unexplained failure, and suggests the app's
+  existing chat as a fallback.
 
 ## Publishing to Google Play Store
 

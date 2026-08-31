@@ -510,6 +510,17 @@ export interface DriverNotice {
   created_at: string;
 }
 
+export interface RideCall {
+  id: string;
+  ride_id: string;
+  caller_id: string;
+  callee_id: string;
+  status: "initiated" | "answered" | "declined" | "missed" | "ended";
+  started_at: string;
+  ended_at: string | null;
+  duration_seconds: number | null;
+}
+
 export interface RideStop {
   id: string;
   ride_id: string;

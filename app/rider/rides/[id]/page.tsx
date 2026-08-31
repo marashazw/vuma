@@ -709,9 +709,20 @@ export default function RiderRideDetailPage({ params }: { params: Promise<{ id: 
         </div>
       )}
 
-      {(ride.status === "accepted" || ride.status === "in_progress") && ride.driver_id && (
-        <ContactCard rideId={ride.id} otherUserId={ride.driver_id} otherRoleLabel="driver" />
-      )}
+      {(() => {
+        const within24hOfCompletion =
+          ride.status === "completed" && ride.completed_at && Date.now() - new Date(ride.completed_at).getTime() < 24 * 60 * 60 * 1000;
+        const showContact = ((ride.status === "accepted" || ride.status === "in_progress") && ride.driver_id) || (within24hOfCompletion && ride.driver_id);
+        if (!showContact) return null;
+        return (
+          <div className="space-y-2">
+            {within24hOfCompletion && (
+              <p className="text-xs text-navy-400 text-center">Left something in the car? You can still reach your driver.</p>
+            )}
+            <ContactCard rideId={ride.id} otherUserId={ride.driver_id!} otherRoleLabel="driver" canCall={true} />
+          </div>
+        );
+      })()}
 
       {(ride.status === "accepted" || ride.status === "in_progress") && (
         <ShareRideButton ride={ride} driver={driver} />

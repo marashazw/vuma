@@ -3,25 +3,27 @@
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { RideChat } from "@/components/chat/RideChat";
+import { InAppCall } from "@/components/ride/InAppCall";
 import { playNotificationSound } from "@/lib/sound";
 import type { RideMessage } from "@/lib/types";
-import { Phone, MessageCircle, ChevronDown, ChevronUp, PhoneOff } from "lucide-react";
+import { MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { useModal } from "@/components/ui/ModalProvider";
 
 export function ContactCard({
   rideId,
   otherUserId,
   otherRoleLabel,
+  canCall,
 }: {
   rideId: string;
   otherUserId: string;
   otherRoleLabel: string; // "driver" or "rider"
+  canCall: boolean;
 }) {
   const supabase = createClient();
   const modal = useModal();
   const [userId, setUserId] = useState<string | null>(null);
   const [name, setName] = useState<string | null>(null);
-  const [phone, setPhone] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState<RideMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -44,9 +46,8 @@ export function ContactCard({
       } = await supabase.auth.getUser();
       if (user) setUserId(user.id);
 
-      const { data } = await supabase.from("profiles").select("full_name, phone").eq("id", otherUserId).single();
+      const { data } = await supabase.from("profiles").select("full_name").eq("id", otherUserId).single();
       setName(data?.full_name || null);
-      setPhone(data?.phone || null);
     })();
 
     loadMessages();
@@ -104,23 +105,14 @@ export function ContactCard({
 
   return (
     <div className="card p-5">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <p className="label mb-1">Your {otherRoleLabel}</p>
-          <p className="font-semibold">{name || "Loading…"}</p>
-        </div>
-        {phone ? (
-          <a href={`tel:${phone}`} className="btn-dark !py-2 !px-4">
-            <Phone className="w-4 h-4" /> Call
-          </a>
-        ) : (
-          <span className="flex items-center gap-1.5 text-xs text-navy-300">
-            <PhoneOff className="w-3.5 h-3.5" /> No phone on file
-          </span>
-        )}
+      <div className="mb-4">
+        <p className="label mb-1">Your {otherRoleLabel}</p>
+        <p className="font-semibold">{name || "Loading…"}</p>
       </div>
 
-      <button className="btn-ghost w-full justify-between relative" onClick={toggleChat}>
+      {userId && <InAppCall rideId={rideId} userId={userId} otherPartyId={otherUserId} otherPartyLabel={otherRoleLabel} canCall={canCall} />}
+
+      <button className="btn-ghost w-full justify-between relative mt-3" onClick={toggleChat}>
         <span className="flex items-center gap-2">
           <MessageCircle className="w-4 h-4" /> Chat
           {unreadCount > 0 && (
