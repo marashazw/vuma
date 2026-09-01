@@ -18,8 +18,9 @@
 // - Everything else (JS/CSS/images/fonts, same-origin only): cache-first
 //   with runtime caching, for speed and offline resilience.
 
-const CACHE_NAME = "vuma-cache-v2";
+const CACHE_NAME = "vuma-cache-v3";
 const OFFLINE_URL = "/offline.html";
+const NAVIGATION_TIMEOUT_MS = 2500;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -70,22 +71,41 @@ self.addEventListener("fetch", (event) => {
   // asset rule below, meant for this app's own JS/CSS/images.
   if (url.origin !== self.location.origin) return;
 
-  // Page loads: network-first (always prefer fresh content when online),
-  // falling back to whatever was last cached for that exact page, falling
-  // back to a generic offline shell as the last resort.
+  // Page loads: race the network against a timeout, not pure
+  // network-first. A fully offline device fails the fetch almost
+  // instantly and the old approach handled that fine — the actual gap was
+  // a slow-but-technically-connected network (weak signal, high latency),
+  // where fetch() doesn't fail at all, it just takes a long time, and the
+  // browser sits there with nothing painted for however long that takes.
+  // Falling back to cache after a bounded wait means something branded
+  // always shows quickly, even if it's a slightly older cached version
+  // rather than the freshest content. The slow network request keeps
+  // running in the background regardless of which side of the race wins,
+  // so the cache still gets updated with the fresh response for next
+  // time, even on a load where this fallback fired.
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          return res;
-        })
-        .catch(async () => {
-          const cache = await caches.open(CACHE_NAME);
+      (async () => {
+        const cache = await caches.open(CACHE_NAME);
+
+        const networkPromise = fetch(request)
+          .then((res) => {
+            cache.put(request, res.clone());
+            return res;
+          })
+          .catch(() => null);
+
+        const fallback = async () => {
           const cached = await cache.match(request);
           return cached || (await cache.match("/")) || (await cache.match(OFFLINE_URL));
-        })
+        };
+
+        const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), NAVIGATION_TIMEOUT_MS));
+
+        const raced = await Promise.race([networkPromise, timeoutPromise]);
+        if (raced) return raced;
+        return (await fallback()) || Response.error();
+      })()
     );
     return;
   }

@@ -4,6 +4,7 @@ import "./globals.css";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { ModalProvider } from "@/components/ui/ModalProvider";
+import { AppSplash } from "@/components/AppSplash";
 
 const sora = Sora({ subsets: ["latin"], variable: "--font-sora", weight: ["500", "600", "700"] });
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${sora.variable} ${inter.variable} ${jbmono.variable}`}>
       <body>
+        <AppSplash />
         <ModalProvider>
           {children}
           <ServiceWorkerRegistration />

@@ -1592,6 +1592,43 @@ simplified and should be hardened before handling real money and real users at s
   carrier-grade NAT, which is common in exactly the markets this app targets. The UI says so
   directly rather than presenting a silent, unexplained failure, and suggests the app's
   existing chat as a fallback.
+- **Fixed a real persistence gap in the safety check, found through direct testing**: the modal
+  was only ever shown by the same effect that fires the threshold check, which only runs on the
+  `none`-to-`triggered` transition. Once triggered, if the driver's page reloaded, or they
+  navigated away and back, before responding — a page remount would find
+  `safety_check_status` already `"triggered"` and never show the modal again at all, with no
+  way back short of a direct database edit. Fixed by making the modal's visibility a direct,
+  ongoing reflection of the persisted database flag (a dedicated effect keyed to
+  `safety_check_status` itself), rather than something set once by the triggering effect and
+  left to local state afterward — it now reliably reappears on any remount for as long as the
+  driver hasn't yet clicked one of the two response buttons, matching "stay visible until the
+  driver clicks it" for real rather than only for the specific browser session already open at
+  the moment it first fired.
+- **Branded launch experience instead of a blank white page, across three separate layers,
+  each covering a different gap the others don't.** (1) The native OS/browser-level splash
+  that Chrome already shows automatically for an installed TWA, based purely on the manifest's
+  icon and `background_color` — already correctly configured (`#0E1B2E`), needed no change,
+  and covers the very first instant before any web content loads at all, since it doesn't
+  depend on any network request or JavaScript execution. (2) A new `AppSplash` component,
+  rendered as static markup directly in the server-rendered HTML rather than conditional React
+  state — critical distinction, since state-driven loading UI would still wait on JS to
+  execute first, which is exactly the gap being closed here. Bridges the window between "HTML
+  has arrived" and "React has hydrated," which is what actually shows as a blank page on a
+  slow device or slow connection even while fully online — hides itself shortly after
+  hydration completes, handing off to whatever loading state the specific page already shows
+  while its own data fetches. (3) The existing offline fallback (`offline.html`), now
+  restyled to match the same navy/gold look as the other two layers, rather than its previous
+  light background — avoids a jarring visual switch if a user sees more than one of these in
+  quick succession during a genuinely bad connection. **A real gap found and fixed in the
+  service worker itself while building this**: navigation requests were pure network-first,
+  with no timeout — meaning a slow-but-technically-connected network (weak signal, high
+  latency, the realistic bad case for mobile data in these markets, not necessarily full
+  offline) would leave the browser waiting indefinitely with nothing painted, since the fetch
+  never actually failed, it just took a long time. Fixed with a timeout race: falls back to
+  the cached version after 2.5 seconds if the network hasn't responded, while the slow request
+  keeps running in the background regardless of which side won, so the cache still gets
+  refreshed for next time even on a load where the fallback fired for this one. Cache version
+  bumped (`v2` → `v3`) since this changes actual fetch behavior, not just cached content.
 
 ## Publishing to Google Play Store
 
