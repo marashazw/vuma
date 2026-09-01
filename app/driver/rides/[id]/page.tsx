@@ -205,9 +205,7 @@ function DriverRideDetailInner({ params }: { params: Promise<{ id: string }> }) 
   // anomalous situations (breakdown, detour, distress) rather than normal
   // traffic variance. Checked client-side on an interval rather than a
   // server-side scheduled job, matching this app's established pattern
-  // elsewhere of no reliable cron on this hosting tier — but the trigger
-  // itself is persisted to the database the moment it fires, not just held
-  // in local state, so it survives a page reload and won't fire twice.
+  // elsewhere of no reliable cron on this hosting tier.
   useEffect(() => {
     if (!ride || ride.status !== "in_progress" || ride.safety_check_status !== "none") return;
     if (!ride.started_at || !ride.estimated_duration_min) return;
@@ -215,7 +213,6 @@ function DriverRideDetailInner({ params }: { params: Promise<{ id: string }> }) 
     function checkOverdue() {
       const elapsedMin = (Date.now() - new Date(ride!.started_at!).getTime()) / 60000;
       if (elapsedMin >= ride!.estimated_duration_min! * 4) {
-        setShowSafetyCheck(true);
         supabase.from("rides").update({ safety_check_status: "triggered", safety_check_triggered_at: new Date().toISOString() }).eq("id", rideId).then();
       }
     }
@@ -225,6 +222,19 @@ function DriverRideDetailInner({ params }: { params: Promise<{ id: string }> }) 
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ride?.status, ride?.safety_check_status, ride?.started_at, ride?.estimated_duration_min]);
+
+  // The modal itself is a direct reflection of the persisted database
+  // flag, not something set once and left to local state — the effect
+  // above only fires on the none-to-triggered transition, so without
+  // this, a reload, a navigation away and back, or any other reason the
+  // page remounts while the driver hasn't responded yet would find
+  // safety_check_status already "triggered" and never show the modal
+  // again at all. This keeps it showing — and reappearing — until the
+  // driver actually clicks one of the two response buttons, which is the
+  // only thing that moves status to "responded".
+  useEffect(() => {
+    setShowSafetyCheck(ride?.safety_check_status === "triggered");
+  }, [ride?.safety_check_status]);
 
   async function respondSafetyCheckCompleted() {
     setSafetyCheckBusy(true);
