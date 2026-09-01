@@ -668,7 +668,7 @@ function DriverRideDetailInner({ params }: { params: Promise<{ id: string }> }) 
       )}
 
       {showSafetyCheck && (
-        <div className="fixed inset-0 bg-navy-900/60 flex items-center justify-center z-50 px-5">
+        <div className="fixed inset-0 bg-navy-900/60 flex items-center justify-center z-[9999] px-5">
           <div className="card p-6 max-w-sm text-center">
             <AlertTriangle className="w-8 h-8 text-gold-500 mx-auto mb-3" />
             <p className="font-bold text-navy-800 mb-1">Is everything OK?</p>
